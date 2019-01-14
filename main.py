@@ -19,6 +19,9 @@ class StoryTeller:
 			He wanted to check this fact with others. So he called three \
 			others outside his cave."
 
+# tts.say("\\bound=S\\ \\vol=80\\ \\vct=60\\ \\rspd=90\\ {}".format(text))
+# http://doc.aldebaran.com/2-1/naoqi/audio/altexttospeech-tuto.html
+
 	def getAPIByName(self, name):
 	    return ALProxy(name, self.ip, self.port)
 
