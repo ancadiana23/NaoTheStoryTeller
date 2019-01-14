@@ -1,4 +1,6 @@
 from naoqi import ALProxy
+import naoqi 
+
 
 TTSAPI = "ALTextToSpeech"
 ANIMTTS = "ALAnimatedSpeech"
@@ -20,22 +22,24 @@ class StoryTeller:
 
 	def init_stories(self):
 		self.story = \
-			"Long ago, there lived a lion in a dense forest. One morning his \
+			"\\bound=S\\ \\vol=80\\ \\vct=60\\ \\rspd=90\\ \
+			Long ago, there lived a lion in a dense forest. One morning his \
 			wife told him \\mrk=0\\ that his breath was bad and unpleasant. \
 			The lion became embarrassed and angry upon hearing it. \
 			He wanted to check this fact with others. So he called three \
 			others outside his cave."
 
+
 # tts.say("\\bound=S\\ \\vol=80\\ \\vct=60\\ \\rspd=90\\ {}".format(text))
 # http://doc.aldebaran.com/2-1/naoqi/audio/altexttospeech-tuto.html	
 
-	def bookmark_handler(self,value):
-		self.anim.run('animations/Stand/Emotions/Negative/Angry_3')
+	def bookmark_handler(self, value):
+		self.anim.run('animations/Stand/Emotions/Negative/Angry_1')
 
 	def main(self):
-		#tts = story_teller.getSession(TTSAPI)
-		sub = self.memory.subscriber("ALTextToSpeech/CurrentBookMark")
-		sub.signal.connect("bookmark_handler")
+		memory_service = self.memory.session().service("ALMemory")
+		sub = memory_service.subscriber("ALTextToSpeech/CurrentBookMark")
+		sub.signal.connect(self.bookmark_handler)
 		self.tts.say(self.story)
     
 
