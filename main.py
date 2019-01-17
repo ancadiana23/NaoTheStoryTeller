@@ -26,7 +26,7 @@ class StoryTeller:
 
 
 	def init_robot_connection(self):
-		self.ip = "169.254.63.184"
+		self.ip = "169.254.208.132"
 		self.port = 9559
 		self.tts = self.get_session(TTSAPI)
 		self.memory = self.get_session("ALMemory")
@@ -66,22 +66,26 @@ class StoryTeller:
 			"And that, my child, is why it is always best to have a second language." \
 			Moral: It\'s always good to have a second language.'
 
-		new_story = []
-		index = 0
-		self.sentences = re.split("\\.|\"", self.story) 
-		for sentence in self.sentences:
-			sentence_words = sentence.split(" ")
-			middle = len(sentence_words) / 2
-			new_sentence = " ".join(sentence_words[:middle]) + \
-						   " \\mrk=" + str(index) + "\\ " + \
-						   " ".join(sentence_words[middle:])
+		for delimiter in ['.', '"']:
+			self.story = self.story.replace(delimiter, delimiter + '|')
+		
+		self.sentences = self.story.split("|")
+
+		# Do not add a gesture for the first sentence (title).
+		new_story = [self.sentences[0]] 
+		index = 1
+		
+		for sentence in self.sentences[1:]:
+			new_sentence = " \\mrk=" + str(index) + "\\ " + sentence
 			index += 1
 			new_story += [new_sentence]
-		self.story = ".".join(new_story)
+		self.story = "".join(new_story)
 		#self.story = " \\mrk=0\\ " + self.story.replace(".", ". \\mrk=0\\ ")
-		#print(self.story)
+		print(self.story)
+		print("\n\n\n")
 		for sen in self.sentences:
 			print(sen)
+			print("")
 
 
 	def init_gestures(self):
@@ -123,7 +127,7 @@ class StoryTeller:
 	def init_gesture_handler(self):
 		print("init handler")
 		self.memory_service = self.memory.session().service("ALMemory")
-		self.sub = memory_service.subscriber("ALTextToSpeech/CurrentBookMark")
+		self.sub = self.memory_service.subscriber("ALTextToSpeech/CurrentBookMark")
 		self.sub.signal.connect(self.bookmark_handler)
 
 
@@ -159,6 +163,41 @@ class StoryTeller:
 		return quality
 
 
+	def choose_best_gesture(self, sentence_index):
+
+		""" TODO: Do this function using the quality.
+		sentence = self.sentences[sentence_index]
+		annotation = json.loads(self.nlp.annotate(sentence, properties=self.props))
+    	if len(annotation["sentences"]) == 0:
+     		# print(sentence)
+      	return 0.0
+    	sentiment_distribution = annotation["sentences"][0]["sentimentDistribution"] """
+
+		gest_to_use = ['animations/Stand/Exclamation/NAO/Center_Neutral_EXC_01',
+		 'animations/Stand/BodyTalk/Speaking/BodyTalk_5',
+		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01',
+		 'animations/Stand/Gestures/Explain_8',
+		 'animations/Stand/Negation/NAO/Center_Strong_NEG_05',
+		 'animations/Stand/Gestures/Desperate_2',
+		 'animations/Stand/Emotions/Negative/Fearful_1',
+		 'animations/Stand/Gestures/Desperate_2',
+		 'animations/Stand/Gestures/Explain_1',
+		 'animations/Stand/Emotions/Positive/Proud_2',
+		 'animations/Stand/BodyTalk/Speaking/BodyTalk_17',
+		 'animations/Stand/Exclamation/NAO/Left_Strong_EXC_03',
+		 'animations/Stand/Emotions/Positive/Confident_1',
+		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03',
+		 'animations/Stand/Emotions/Positive/Happy_4',
+		 'animations/Stand/BodyTalk/Speaking/BodyTalk_11',
+		 'animations/Stand/BodyTalk/Speaking/BodyTalk_17',
+		 'animations/Stand/Gestures/Explain_9',
+		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01',
+		 'animations/Stand/Gestures/Explain_1',
+		 'animations/Stand/Gestures/Explain_4',
+	  ]
+		return gest_to_use[sentence_index]
+
+
 	def choose_gesture(self):
 		num_to_sentiment = {0: "-", 1: "0", 2:"+"}
 		sentiment = num_to_sentiment[randint(0, 2)]
@@ -171,7 +210,8 @@ class StoryTeller:
 
 	def bookmark_handler(self, value):
 		print("Value = ", value)
-		gesture = self.choose_gesture()
+		#gesture = self.choose_gesture()
+		gesture = self.choose_best_gesture(int(value))
 		self.anim.run(gesture)
 		quality = self.quality_function(self.sentences[int(value)], gesture)
 		self.quality_sum += quality
@@ -185,7 +225,7 @@ class StoryTeller:
 		self.sub.signal.connect(self.bookmark_handler)
 		self.tts.say(self.story)
 		
-		self.quality = quality / len(self.sentences)
+		self.quality_sum = self.quality_sum / len(self.sentences)
 		print(self.quality_sum)
 
 
@@ -209,7 +249,7 @@ def run_simulations(story_teller):
 
 if __name__ == "__main__":
 	story_teller = StoryTeller()
-	#story_teller.main()
-	run_simulations(story_teller)
+	story_teller.main()
+	#run_simulations(story_teller)
 	
 
