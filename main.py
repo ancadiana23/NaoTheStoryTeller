@@ -1,6 +1,7 @@
 import json
 import matplotlib.pyplot as plt
 import naoqi 
+import numpy as np
 import re
 
 from naoqi import ALProxy
@@ -26,102 +27,89 @@ class StoryTeller:
 
 
 	def init_robot_connection(self):
-		self.ip = "169.254.208.132"
+		self.ip = "169.254.233.204"
 		self.port = 9559
 		self.tts = self.get_session(TTSAPI)
 		self.memory = self.get_session("ALMemory")
 		self.anim = self.get_session("ALAnimationPlayer")
 	
+
 	def init_stories(self):
-		'''
 		self.story = \
-			'\\bound=S\\ \\vol=80\\ \\vct=100\\ \\rspd=80\\ \
-			Long ago, there lived a lion in a dense forest. One morning his \
-			wife told him that his breath was bad and unpleasant.  \
-			The lion became embarrassed and angry upon hearing it. \
-			He wanted to check this fact with others. So he called three \
-			others outside his cave. \
-			First came the sheep. The Lion opening his mouth wide said, \
-			"Sheep, tell me if my mouth smells bad?" \
-			The sheep thought that the lion wanted an honest answer, so the sheep said, \
-			"Yes, Friend. There seems to be something wrong with your breath". \
-			This plain speak did not go well with the lion. He pounced on the sheep, \
-			killing it.'
-		'''
-		self.story = \
-			'\\bound=S\\ \\vol=80\\ \\vct=100\\ \\rspd=80\\ \
-			The little mouse. \
-			Once upon a time, there was a Baby Mouse and Mother Mouse. \
-			They lived in a hole in the skirting board in a big, warm house \
-			with lots of cheese to eat, where they wanted for nothing. \
-			Then, one day, Mother Mouse decided to take Baby Mouse outside of their home. \
-			Waiting outside for them was a huge ginger tomcat, licking its lips \
-			and waiting to eat them both up. \
-			"Mother, Mother! What should we do?" Cried Baby Mouse, clinging to his mother\'s tail. \
-			Mother Mouse paused, staring up into the beady eyes of the hungry cat. \
-			But she wasn\'t scared because she knew exactly how to deal with big, scary cats. \
-			She opened her mouth and took in a deep breath. \
-			"Woof! Woof! Bark bark bark!" She shouted, and the cat ran away as fast as he could.\
-			"Wow, Mother! That was amazing!" Baby Mouse said to his mother, smiling happily.\
-			"And that, my child, is why it is always best to have a second language." \
-			Moral: It\'s always good to have a second language.'
-
-		for delimiter in ['.', '"']:
-			self.story = self.story.replace(delimiter, delimiter + '|')
+			'\\bound=S\\ \\vol=80\\ \\vct=100\\ \\rspd=80\\' \
+			'The little mouse. '\
+			'Once upon a time, there was a Baby Mouse and Mother Mouse. '\
+			'They lived in a hole in the skirting board in a big, warm house '\
+			'with lots of cheese to eat, where they wanted for nothing. '\
+			'Then, one day, Mother Mouse decided to take Baby Mouse outside of their home. '\
+			'Waiting outside for them was a huge ginger tomcat, licking its lips '\
+			'and waiting to eat them both up. '\
+			'"Mother, Mother! What should we do?" Cried Baby Mouse, clinging to his mother\'s tail. '\
+			'Mother Mouse paused, staring up into the beady eyes of the hungry cat. '\
+			'But she wasn\'t scared because she knew exactly how to deal with big, scary cats. '\
+			'She opened her mouth and took in a deep breath. '\
+			'"Woof! Woof! Bark bark bark!" She shouted, and the cat ran away as fast as he could.'\
+			'"Wow, Mother! That was amazing!" Baby Mouse said to his mother, smiling happily.'\
+			'"And that, my child, is why it is always best to have a second language." '\
+			'\n	Moral: It\'s always good to have a second language.'
 		
-		self.sentences = self.story.split("|")
+		# Split the text into sentences using a regular expression that matches 
+		# combinations of the delimiters '"' and '.'.
+		# The combinations are contained in a capture group because they will be
+		# used to reconstruct the original text after adding the bookmarks. 
+		self.sentences = re.split("((?:[\\.\"]+\\s*)+)", self.story)
 
-		# Do not add a gesture for the first sentence (title).
-		new_story = [self.sentences[0]] 
-		index = 1
-		
-		for sentence in self.sentences[1:]:
-			new_sentence = " \\mrk=" + str(index) + "\\ " + sentence
-			index += 1
-			new_story += [new_sentence]
+		# Filter out the empty sentences [optional].
+		self.sentences = filter(None, self.sentences)
+
+		# Add a bookmark to every delimiter, by changing every string at an odd
+		# index in the list. 
+		# The first sentence should not have any gesture and the indexes for
+		# the senteces and gestures should match. Thus, the indexes for gestures 
+		# will start from 1. 
+		new_story = [self.sentences[i] if i%2 == 0 else \
+					 self.sentences[i] + " \\mrk=" + str(i/2 + 1) + "\\ "  \
+					 for i in range(len(self.sentences))]
+		# Reconstruct the story.
 		self.story = "".join(new_story)
-		#self.story = " \\mrk=0\\ " + self.story.replace(".", ". \\mrk=0\\ ")
+
+		# Filter out the delimeters from the sentences list.
+		self.sentences = self.sentences[0::2]
 		print(self.story)
-		print("\n\n\n")
-		for sen in self.sentences:
-			print(sen)
-			print("")
+		print(self.sentences)
 
 
 	def init_gestures(self):
-		self.gestures_dict = {'0': ['animations/Stand/BodyTalk/Speaking/BodyTalk_11', 'animations/Stand/BodyTalk/Speaking/BodyTalk_17', 'animations/Stand/BodyTalk/Speaking/BodyTalk_18', 'animations/Stand/BodyTalk/Speaking/BodyTalk_4', 'animations/Stand/BodyTalk/Speaking/BodyTalk_5', 'animations/Stand/Gestures/Explain_1', 'animations/Stand/Gestures/Explain_4', 'animations/Stand/Gestures/Explain_8', 'animations/Stand/Gestures/Explain_9', 'animations/Stand/Self & others/NAO/Left_Neutral_SAO_01', 'animations/Stand/Self & others/NAO/Left_Neutral_SAO_02', 'animations/Stand/Self & others/NAO/Left_Strong_SAO_02', 'animations/Stand/Negation/NAO/Center_Strong_NEG_01', 'animations/Stand/Exclamation/NAO/Center_Neutral_EXC_01', 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01', 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_01'], 
-						 	  '+': ['animations/Stand/Emotions/Positive/Confident_1', 'animations/Stand/Emotions/Positive/Happy_4', 'animations/Stand/Emotions/Positive/Proud_2', 'animations/Stand/Self & others/NAO/Center_Neutral_SAO_03', 'animations/Stand/Exclamation/NAO/Left_Strong_EXC_03', 'animations/Stand/Exclamation/NAO/Right_Strong_EXC_04', 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03', 'animations/Stand/Space & time/NAO/Right_Slow_SAT_01'], 
-						 	  '-': ['animations/Stand/Emotions/Negative/Fearful_1', 'animations/Stand/Gestures/Desperate_2', 'animations/Stand/Gestures/Desperate_5', 'animations/Stand/Negation/NAO/Center_Strong_NEG_05', 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_05']}
-		#self.gesture_to_sentiment = {'animations/Stand/Emotions/Negative/Fearful_1': -0.9, 'animations/Stand/BodyTalk/Speaking/BodyTalk_18': -0.3, 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01': -0.1, 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03': 0.5, 'animations/Stand/BodyTalk/Speaking/BodyTalk_11': 0.1, 'animations/Stand/BodyTalk/Speaking/BodyTalk_17': -0.1, 'animations/Stand/Emotions/Positive/Proud_2': 0.8, 'animations/Stand/Emotions/Positive/Confident_1': 0.8, 'animations/Stand/Exclamation/NAO/Center_Neutral_EXC_01': 0.3, 'animations/Stand/Exclamation/NAO/Right_Strong_EXC_04': 0.7, 'animations/Stand/BodyTalk/Speaking/BodyTalk_5': 0.2, 'animations/Stand/BodyTalk/Speaking/BodyTalk_4': 0.2, 'animations/Stand/Negation/NAO/Center_Strong_NEG_01': 0.5, 'animations/Stand/Self & others/NAO/Center_Neutral_SAO_03': 0.9, 'animations/Stand/Gestures/Explain_4': -0.1, 'animations/Stand/Gestures/Explain_1': 0.1, 'animations/Stand/Emotions/Positive/Happy_4': 1.0, 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_01': 0.0, 'animations/Stand/Gestures/Explain_9': 0.0, 'animations/Stand/Gestures/Explain_8': 0.0, 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_05': -0.75, 'animations/Stand/Negation/NAO/Center_Strong_NEG_05': -0.8, 'animations/Stand/Self & others/NAO/Left_Neutral_SAO_01': 0.3, 'animations/Stand/Self & others/NAO/Left_Neutral_SAO_02': 0.2, 'animations/Stand/Self & others/NAO/Left_Strong_SAO_02': 0.2, 'animations/Stand/Space & time/NAO/Right_Slow_SAT_01': 0.6, 'animations/Stand/Exclamation/NAO/Left_Strong_EXC_03': 0.7, 'animations/Stand/Gestures/Desperate_5': -0.7, 'animations/Stand/Gestures/Desperate_2': -0.5}
-		self.gesture_to_sentiment = {  'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01': 2,
-									    'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03': 3,
-									    'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_01': 2,
-									    'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_05': 0,
-									    'animations/Stand/BodyTalk/Speaking/BodyTalk_11': 2,
-									    'animations/Stand/BodyTalk/Speaking/BodyTalk_17': 2,
-									    'animations/Stand/BodyTalk/Speaking/BodyTalk_18': 1,
-									    'animations/Stand/BodyTalk/Speaking/BodyTalk_4': 3,
-									    'animations/Stand/BodyTalk/Speaking/BodyTalk_5': 3,
-									    'animations/Stand/Emotions/Negative/Fearful_1': 0,
-									    'animations/Stand/Emotions/Positive/Confident_1': 4,
-									    'animations/Stand/Emotions/Positive/Happy_4': 4,
-									    'animations/Stand/Emotions/Positive/Proud_2': 4,
-									    'animations/Stand/Exclamation/NAO/Center_Neutral_EXC_01': 3,
-									    'animations/Stand/Exclamation/NAO/Left_Strong_EXC_03': 4,
-									    'animations/Stand/Exclamation/NAO/Right_Strong_EXC_04': 4,
-									    'animations/Stand/Gestures/Desperate_2': 1,
-									    'animations/Stand/Gestures/Desperate_5': 0,
-									    'animations/Stand/Gestures/Explain_1': 2,
-									    'animations/Stand/Gestures/Explain_4': 2,
-									    'animations/Stand/Gestures/Explain_8': 2,
-									    'animations/Stand/Gestures/Explain_9': 2,
-									    'animations/Stand/Negation/NAO/Center_Strong_NEG_01': 3,
-									    'animations/Stand/Negation/NAO/Center_Strong_NEG_05': 0,
-									    'animations/Stand/Self & others/NAO/Center_Neutral_SAO_03': 4,
-									    'animations/Stand/Self & others/NAO/Left_Neutral_SAO_01': 3,
-									    'animations/Stand/Self & others/NAO/Left_Neutral_SAO_02': 3,
-									    'animations/Stand/Self & others/NAO/Left_Strong_SAO_02': 3,
-									    'animations/Stand/Space & time/NAO/Right_Slow_SAT_01': 4}
+		self.gesture_to_sentiment = {
+		'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01': [0, 1, 2, 1, 0], 
+		'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03': [0, 0, 1, 2, 1], 
+		'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_01': [0, 1, 2, 1, 0], 
+		'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_05': [2, 1, 0, 0, 0], 
+		'animations/Stand/BodyTalk/Speaking/BodyTalk_11': [0, 1, 2, 1, 0], 
+		'animations/Stand/BodyTalk/Speaking/BodyTalk_17': [0, 1, 2, 1, 0], 
+		'animations/Stand/BodyTalk/Speaking/BodyTalk_18': [1, 2, 1, 0, 0], 
+		'animations/Stand/BodyTalk/Speaking/BodyTalk_4': [0, 0, 1, 2, 1], 
+		'animations/Stand/BodyTalk/Speaking/BodyTalk_5': [0, 0, 1, 2, 1], 
+		'animations/Stand/Emotions/Negative/Fearful_1': [2, 1, 0, 0, 0], 
+		'animations/Stand/Emotions/Positive/Confident_1': [0, 0, 0, 1, 2], 
+		'animations/Stand/Emotions/Positive/Happy_4': [0, 0, 0, 1, 2], 
+		'animations/Stand/Emotions/Positive/Proud_2': [0, 0, 0, 1, 2], 
+		'animations/Stand/Exclamation/NAO/Center_Neutral_EXC_01': [0, 0, 1, 2, 1], 
+		'animations/Stand/Exclamation/NAO/Left_Strong_EXC_03': [0, 0, 0, 1, 2], 
+		'animations/Stand/Exclamation/NAO/Right_Strong_EXC_04': [0, 0, 0, 1, 2], 
+		'animations/Stand/Gestures/Desperate_2': [1, 2, 1, 0, 0], 
+		'animations/Stand/Gestures/Desperate_5': [2, 1, 0, 0, 0], 
+		'animations/Stand/Gestures/Explain_1': [0, 1, 2, 1, 0], 
+		'animations/Stand/Gestures/Explain_4': [0, 1, 2, 1, 0], 
+		'animations/Stand/Gestures/Explain_8': [0, 1, 2, 1, 0], 
+		'animations/Stand/Gestures/Explain_9': [0, 1, 2, 1, 0], 
+		'animations/Stand/Negation/NAO/Center_Strong_NEG_01': [0, 0, 1, 2, 1], 
+		'animations/Stand/Negation/NAO/Center_Strong_NEG_05': [2, 1, 0, 0, 0], 
+		'animations/Stand/Self & others/NAO/Center_Neutral_SAO_03': [0, 0, 0, 1, 2], 
+		'animations/Stand/Self & others/NAO/Left_Neutral_SAO_01': [0, 0, 1, 2, 1], 
+		'animations/Stand/Self & others/NAO/Left_Neutral_SAO_02': [0, 0, 1, 2, 1], 
+		'animations/Stand/Self & others/NAO/Left_Strong_SAO_02': [0, 0, 1, 2, 1], 
+		'animations/Stand/Space & time/NAO/Right_Slow_SAT_01': [0, 0, 0, 1, 2]}
 
 
 	def init_gesture_handler(self):
@@ -142,25 +130,33 @@ class StoryTeller:
 
 	def quality_function(self, sentence, gesture):
 		annotation = json.loads(self.nlp.annotate(sentence, properties=self.props))
-		if len(annotation["sentences"]) == 0:
-			#print(sentence)
-			return 0.0
 		sentiment_distribution = annotation["sentences"][0]["sentimentDistribution"]
-		'''
-		print(sum(sentiment_distribution))
-		normalizer = len(sentiment_distribution) / 2
-		sentiment_distribution = [(i - normalizer) * sentiment_distribution[i] \
-								  for i in range(len(sentiment_distribution))]
-		print(sentiment_distribution)
-		sentiment = sum(sentiment_distribution) / 2.0
+		plt.plot(range(1, 6, 1), sentiment_distribution)
+		indx = np.argmax(self.gesture_to_sentiment[gesture])
+		return sentiment_distribution[indx]
+		#quality = [x * y for (x, y) in zip(sentiment_distribution, self.gesture_to_sentiment[gesture])]
+		#quality = sum(quality)
+		#quality = sentiment_distribution[self.gesture_to_sentiment[gesture]]
+		#print(sentiment_distribution)
+		#print(self.gesture_to_sentiment[gesture])
+		#print(quality)
+		return quality
 
-		#quality = self.gensture_to_sentiment[gesture] * sentiment
-		quality = abs(self.gensture_to_sentiment[gesture] - sentiment)
-		print(sentiment, self.gensture_to_sentiment[gesture], quality)
-		return quality
-		'''
-		quality = sentiment_distribution[self.gesture_to_sentiment[gesture]]
-		return quality
+	def choose_most_app_gesture(self, sentence_index):
+		sentence = self.sentences[sentence_index]
+		annotation = json.loads(self.nlp.annotate(sentence, properties=self.props))
+		sentiment_distribution = annotation["sentences"][0]["sentimentDistribution"]
+		index = np.argmax(sentiment_distribution)
+		gesture = self.gesture_to_sentiment.keys()[index]
+		return gesture
+
+	def choose_least_app_gesture(self, sentence_index):
+		sentence = self.sentences[sentence_index]
+		annotation = json.loads(self.nlp.annotate(sentence, properties=self.props))
+		sentiment_distribution = annotation["sentences"][0]["sentimentDistribution"]
+		index = np.argmin(sentiment_distribution)
+		gesture = self.gesture_to_sentiment.keys()[index]
+		return gesture
 
 
 	def choose_best_gesture(self, sentence_index):
@@ -173,45 +169,53 @@ class StoryTeller:
       	return 0.0
     	sentiment_distribution = annotation["sentences"][0]["sentimentDistribution"] """
 
-		gest_to_use = ['animations/Stand/Exclamation/NAO/Center_Neutral_EXC_01',
-		 'animations/Stand/BodyTalk/Speaking/BodyTalk_5',
+		gest_to_use = [
+		 # 1. Once upon a time, there was a Baby Mouse and Mother Mouse.
+	    'animations/Stand/Self & others/NAO/Center_Neutral_SAO_03',
+		 # 2. They lived in a hole in the skirting board in a big, warm house with lots of cheese to eat, where they wanted for nothing.
+		'animations/Stand/Negation/NAO/Center_Strong_NEG_01',
+		 # 3. Then, one day, Mother Mouse decided to take Baby Mouse outside of their home.
 		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01',
+		 # 4. Waiting outside for them was a huge ginger tomcat, licking its lips and waiting to eat them both up. 
 		 'animations/Stand/Gestures/Explain_8',
-		 'animations/Stand/Negation/NAO/Center_Strong_NEG_05',
-		 'animations/Stand/Gestures/Desperate_2',
-		 'animations/Stand/Emotions/Negative/Fearful_1',
-		 'animations/Stand/Gestures/Desperate_2',
-		 'animations/Stand/Gestures/Explain_1',
-		 'animations/Stand/Emotions/Positive/Proud_2',
-		 'animations/Stand/BodyTalk/Speaking/BodyTalk_17',
-		 'animations/Stand/Exclamation/NAO/Left_Strong_EXC_03',
+		 # 5, 6. "Mother, Mother! What should we do?"
+  		 'animations/Stand/Emotions/Negative/Fearful_1',
+		 # 7. Cried Baby Mouse, clinging to his mother's tail.
+ 		 'animations/Stand/Negation/NAO/Center_Strong_NEG_05',
+		 # 8. Mother Mouse paused, staring up into the beady eyes of the hungry cat.
 		 'animations/Stand/Emotions/Positive/Confident_1',
-		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03',
-		 'animations/Stand/Emotions/Positive/Happy_4',
+		 # 9. But she wasn't scared because she knew exactly how to deal with big, scary cats.
+		'animations/Stand/Emotions/Positive/Proud_2',
+		 # 10. She opened her mouth and took in a deep breath.
+		 'animations/Stand/Emotions/Positive/Confident_1',
+		 # 11, 12 "Woof! Woof! Bark bark bark!"
+ 		 'animations/Stand/Exclamation/NAO/Left_Strong_EXC_03',
+		 # 13. She shouted, and the cat ran away as fast as he could.
+  		 'animations/Stand/Emotions/Positive/Happy_4',
+		 # 14, 15 "Wow, Mother! That was amazing!" 
+ 		 'animations/Stand/Emotions/Positive/Confident_1',
+		 # 16. Baby Mouse said to his mother, smiling happily. 
 		 'animations/Stand/BodyTalk/Speaking/BodyTalk_11',
-		 'animations/Stand/BodyTalk/Speaking/BodyTalk_17',
+		 # 17,18 "And that, my child, is why it is always best to have a second language. 
 		 'animations/Stand/Gestures/Explain_9',
-		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01',
+		 # 19, 20 Moral: It's always good to have a second language.
 		 'animations/Stand/Gestures/Explain_1',
+		 # 21 End gesture.
 		 'animations/Stand/Gestures/Explain_4',
 	  ]
-		return gest_to_use[sentence_index]
+		return gest_to_use[sentence_index - 1]
 
 
-	def choose_gesture(self):
-		num_to_sentiment = {0: "-", 1: "0", 2:"+"}
-		sentiment = num_to_sentiment[randint(0, 2)]
-		#print(sentiment)
-		gesture_index = randint(0, len(self.gestures_dict[sentiment]) - 1)
-		gesture = self.gestures_dict[sentiment][gesture_index]
-		#print(gesture)
+	def choose_gesture(self, sentence_index):
+		gesture_index = randint(0, len(self.gesture_to_sentiment) - 1)
+		gesture = self.gesture_to_sentiment.keys()[gesture_index]
 		return gesture
 
 
 	def bookmark_handler(self, value):
 		print("Value = ", value)
-		#gesture = self.choose_gesture()
-		gesture = self.choose_best_gesture(int(value))
+		gesture = self.choose_gesture()
+		#gesture = self.choose_best_gesture(int(value))
 		self.anim.run(gesture)
 		quality = self.quality_function(self.sentences[int(value)], gesture)
 		self.quality_sum += quality
@@ -229,27 +233,38 @@ class StoryTeller:
 		print(self.quality_sum)
 
 
-	def simulate(self):
+	def simulate(self, choose_gesture_function):
+
 		self.quality_sum = 0
-		for sentence in self.sentences:
-			gesture = self.choose_gesture()
+		for i in range(len(self.sentences)):
+			#print("-----{}----".format(i))
+			#print(sentence)
+			
+			sentence = self.sentences[i]
+			gesture = choose_gesture_function(i)
 			quality = self.quality_function(sentence, gesture)
 			self.quality_sum += quality
-		self.quality_sum = self.quality_sum / len(self.sentences)
-		#print(self.quality_sum)
+
+		self.quality_sum = self.quality_sum / (len(self.sentences))
 		return self.quality_sum
 
 def run_simulations(story_teller):
-	simulation_range = range(50)
-	simulations = [story_teller.simulate() for _ in simulation_range]
+	num_simulations = 1
+	simulation_range = range(num_simulations)
+	simulations = [story_teller.simulate(story_teller.choose_gesture) for _ in simulation_range]
+	#best = story_teller.simulate(story_teller.choose_most_app_gesture)
+	#worst = story_teller.simulate(story_teller.choose_least_app_gesture)
 	print(simulations)
+	'''
 	plt.ylim((0.0, 1.0))
 	plt.plot(simulation_range, simulations)
+	plt.plot(simulation_range, [best]*num_simulations)
+	plt.plot(simulation_range, [worst]*num_simulations)'''
 	plt.show()
 
 if __name__ == "__main__":
 	story_teller = StoryTeller()
-	story_teller.main()
-	#run_simulations(story_teller)
+	#story_teller.main()
+	run_simulations(story_teller)
 	
 
