@@ -110,6 +110,10 @@ class StoryTeller:
 		'animations/Stand/Self & others/NAO/Left_Neutral_SAO_02': [0, 0, 1, 2, 1], 
 		'animations/Stand/Self & others/NAO/Left_Strong_SAO_02': [0, 0, 1, 2, 1], 
 		'animations/Stand/Space & time/NAO/Right_Slow_SAT_01': [0, 0, 0, 1, 2]}
+		self.gesture_to_probability = \
+		{'animations/Stand/Emotions/Negative/Fearful_1': [0.718, 0.138, 0.048, 0.048, 0.048], 
+		 'animations/Stand/BodyTalk/Speaking/BodyTalk_18': [0.25, 0.3, 0.25, 0.1, 0.1], 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01': [0.05, 0.2, 0.5, 0.2, 0.05], 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03': [0.05, 0.05, 0.2, 0.5, 0.2], 'animations/Stand/BodyTalk/Speaking/BodyTalk_11': [0.05, 0.2, 0.5, 0.2, 0.05], 'animations/Stand/BodyTalk/Speaking/BodyTalk_17': [0.03, 0.12, 0.7, 0.12, 0.03], 'animations/Stand/Emotions/Positive/Proud_2': [0.048, 0.048, 0.048, 0.138, 0.718], 'animations/Stand/Emotions/Positive/Confident_1': [0.08, 0.08, 0.08, 0.23, 0.53], 'animations/Stand/Exclamation/NAO/Center_Neutral_EXC_01': [0.1, 0.1, 0.25, 0.3, 0.25], 'animations/Stand/Exclamation/NAO/Right_Strong_EXC_04': [0.048, 0.048, 0.048, 0.138, 0.718], 'animations/Stand/BodyTalk/Speaking/BodyTalk_5': [0.05, 0.05, 0.2, 0.5, 0.2], 'animations/Stand/BodyTalk/Speaking/BodyTalk_4': [0.03, 0.12, 0.7, 0.12, 0.03], 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_05': [0.53, 0.23, 0.08, 0.08, 0.08], 'animations/Stand/Self & others/NAO/Center_Neutral_SAO_03': [0.1, 0.25, 0.3, 0.25, 0.1], 'animations/Stand/Gestures/Explain_4': [0.1, 0.25, 0.3, 0.25, 0.1], 'animations/Stand/Gestures/Explain_1': [0.1, 0.25, 0.3, 0.25, 0.1], 'animations/Stand/Emotions/Positive/Happy_4': [0.048, 0.048, 0.048, 0.138, 0.718], 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_01': [0.05, 0.2, 0.5, 0.2, 0.05], 'animations/Stand/Gestures/Explain_9': [0.05, 0.2, 0.5, 0.2, 0.05], 'animations/Stand/Gestures/Explain_8': [0.05, 0.2, 0.5, 0.2, 0.05], 'animations/Stand/Negation/NAO/Center_Strong_NEG_01': [0.08, 0.08, 0.08, 0.23, 0.53], 'animations/Stand/Negation/NAO/Center_Strong_NEG_05': [0.53, 0.23, 0.08, 0.08, 0.08], 'animations/Stand/Self & others/NAO/Left_Neutral_SAO_01': [0.05, 0.2, 0.5, 0.2, 0.05], 'animations/Stand/Self & others/NAO/Left_Neutral_SAO_02': [0.05, 0.05, 0.2, 0.5, 0.2], 'animations/Stand/Self & others/NAO/Left_Strong_SAO_02': [0.05, 0.05, 0.2, 0.5, 0.2], 'animations/Stand/Space & time/NAO/Right_Slow_SAT_01': [0.05, 0.05, 0.2, 0.5, 0.2], 'animations/Stand/Exclamation/NAO/Left_Strong_EXC_03': [0.048, 0.048, 0.048, 0.138, 0.718], 'animations/Stand/Gestures/Desperate_5': [0.53, 0.23, 0.08, 0.08, 0.08], 'animations/Stand/Gestures/Desperate_2': [0.2, 0.5, 0.2, 0.05, 0.05]}
+
 
 
 	def init_gesture_handler(self):
@@ -131,16 +135,17 @@ class StoryTeller:
 	def quality_function(self, sentence, gesture):
 		annotation = json.loads(self.nlp.annotate(sentence, properties=self.props))
 		sentiment_distribution = annotation["sentences"][0]["sentimentDistribution"]
-		plt.plot(range(1, 6, 1), sentiment_distribution)
 		indx = np.argmax(self.gesture_to_sentiment[gesture])
 		return sentiment_distribution[indx]
-		#quality = [x * y for (x, y) in zip(sentiment_distribution, self.gesture_to_sentiment[gesture])]
-		#quality = sum(quality)
-		#quality = sentiment_distribution[self.gesture_to_sentiment[gesture]]
-		#print(sentiment_distribution)
-		#print(self.gesture_to_sentiment[gesture])
-		#print(quality)
-		return quality
+
+
+	def error_function(self, sentence, gesture):
+		annotation = json.loads(self.nlp.annotate(sentence, properties=self.props))
+		sentiment_distribution = annotation["sentences"][0]["sentimentDistribution"]
+		gesture_distribution = self.gesture_to_probability[gesture]
+		squared_errors = [(x - y)**2 for (x, y) in zip(sentiment_distribution, gesture_distribution)]
+		return sum(squared_errors)
+
 
 	def choose_most_app_gesture(self, sentence_index):
 		sentence = self.sentences[sentence_index]
@@ -235,32 +240,36 @@ class StoryTeller:
 
 	def simulate(self, choose_gesture_function):
 
-		self.quality_sum = 0
+		self.error_sum = 0
 		for i in range(len(self.sentences)):
-			#print("-----{}----".format(i))
-			#print(sentence)
-			
 			sentence = self.sentences[i]
 			gesture = choose_gesture_function(i)
-			quality = self.quality_function(sentence, gesture)
-			self.quality_sum += quality
+			error = self.error_function(sentence, gesture)
+			self.error_sum += error
 
-		self.quality_sum = self.quality_sum / (len(self.sentences))
-		return self.quality_sum
+		self.error_sum = self.error_sum / (len(self.sentences))
+		return self.error_sum
 
 def run_simulations(story_teller):
-	num_simulations = 1
+	num_simulations = 50
 	simulation_range = range(num_simulations)
 	simulations = [story_teller.simulate(story_teller.choose_gesture) for _ in simulation_range]
-	#best = story_teller.simulate(story_teller.choose_most_app_gesture)
-	#worst = story_teller.simulate(story_teller.choose_least_app_gesture)
+	hardcoded = story_teller.simulate(story_teller.choose_best_gesture)
+	best = story_teller.simulate(story_teller.choose_most_app_gesture)
+	worst = story_teller.simulate(story_teller.choose_least_app_gesture)
 	print(simulations)
-	'''
+	
 	plt.ylim((0.0, 1.0))
-	plt.plot(simulation_range, simulations)
-	plt.plot(simulation_range, [best]*num_simulations)
-	plt.plot(simulation_range, [worst]*num_simulations)'''
+	plt.plot(simulation_range, simulations, color="blue", label="Random choice")
+	plt.plot(simulation_range, [hardcoded]*num_simulations, color="green", label="Hardcoded")
+	#plt.plot(simulation_range, [best]*num_simulations, color="green")
+	#plt.plot(simulation_range, [worst]*num_simulations, color="green")
+	plt.xlabel("Time")
+	plt.ylabel("Loss")
+	plt.legend()
 	plt.show()
+	plt.savefig('loss_over_time.png')
+
 
 if __name__ == "__main__":
 	story_teller = StoryTeller()
