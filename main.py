@@ -80,40 +80,45 @@ class StoryTeller:
 
 
 	def init_gestures(self):
-		self.gesture_to_sentiment = {
-		'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01': [0, 1, 2, 1, 0], 
-		'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03': [0, 0, 1, 2, 1], 
-		'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_01': [0, 1, 2, 1, 0], 
-		'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_05': [2, 1, 0, 0, 0], 
-		'animations/Stand/BodyTalk/Speaking/BodyTalk_11': [0, 1, 2, 1, 0], 
-		'animations/Stand/BodyTalk/Speaking/BodyTalk_17': [0, 1, 2, 1, 0], 
-		'animations/Stand/BodyTalk/Speaking/BodyTalk_18': [1, 2, 1, 0, 0], 
-		'animations/Stand/BodyTalk/Speaking/BodyTalk_4': [0, 0, 1, 2, 1], 
-		'animations/Stand/BodyTalk/Speaking/BodyTalk_5': [0, 0, 1, 2, 1], 
-		'animations/Stand/Emotions/Negative/Fearful_1': [2, 1, 0, 0, 0], 
-		'animations/Stand/Emotions/Positive/Confident_1': [0, 0, 0, 1, 2], 
-		'animations/Stand/Emotions/Positive/Happy_4': [0, 0, 0, 1, 2], 
-		'animations/Stand/Emotions/Positive/Proud_2': [0, 0, 0, 1, 2], 
-		'animations/Stand/Exclamation/NAO/Center_Neutral_EXC_01': [0, 0, 1, 2, 1], 
-		'animations/Stand/Exclamation/NAO/Left_Strong_EXC_03': [0, 0, 0, 1, 2], 
-		'animations/Stand/Exclamation/NAO/Right_Strong_EXC_04': [0, 0, 0, 1, 2], 
-		'animations/Stand/Gestures/Desperate_2': [1, 2, 1, 0, 0], 
-		'animations/Stand/Gestures/Desperate_5': [2, 1, 0, 0, 0], 
-		'animations/Stand/Gestures/Explain_1': [0, 1, 2, 1, 0], 
-		'animations/Stand/Gestures/Explain_4': [0, 1, 2, 1, 0], 
-		'animations/Stand/Gestures/Explain_8': [0, 1, 2, 1, 0], 
-		'animations/Stand/Gestures/Explain_9': [0, 1, 2, 1, 0], 
-		'animations/Stand/Negation/NAO/Center_Strong_NEG_01': [0, 0, 1, 2, 1], 
-		'animations/Stand/Negation/NAO/Center_Strong_NEG_05': [2, 1, 0, 0, 0], 
-		'animations/Stand/Self & others/NAO/Center_Neutral_SAO_03': [0, 0, 0, 1, 2], 
-		'animations/Stand/Self & others/NAO/Left_Neutral_SAO_01': [0, 0, 1, 2, 1], 
-		'animations/Stand/Self & others/NAO/Left_Neutral_SAO_02': [0, 0, 1, 2, 1], 
-		'animations/Stand/Self & others/NAO/Left_Strong_SAO_02': [0, 0, 1, 2, 1], 
-		'animations/Stand/Space & time/NAO/Right_Slow_SAT_01': [0, 0, 0, 1, 2]}
 		self.gesture_to_probability = \
 		{'animations/Stand/Emotions/Negative/Fearful_1': [0.718, 0.138, 0.048, 0.048, 0.048], 
-		 'animations/Stand/BodyTalk/Speaking/BodyTalk_18': [0.25, 0.3, 0.25, 0.1, 0.1], 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01': [0.05, 0.2, 0.5, 0.2, 0.05], 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03': [0.05, 0.05, 0.2, 0.5, 0.2], 'animations/Stand/BodyTalk/Speaking/BodyTalk_11': [0.05, 0.2, 0.5, 0.2, 0.05], 'animations/Stand/BodyTalk/Speaking/BodyTalk_17': [0.03, 0.12, 0.7, 0.12, 0.03], 'animations/Stand/Emotions/Positive/Proud_2': [0.048, 0.048, 0.048, 0.138, 0.718], 'animations/Stand/Emotions/Positive/Confident_1': [0.08, 0.08, 0.08, 0.23, 0.53], 'animations/Stand/Exclamation/NAO/Center_Neutral_EXC_01': [0.1, 0.1, 0.25, 0.3, 0.25], 'animations/Stand/Exclamation/NAO/Right_Strong_EXC_04': [0.048, 0.048, 0.048, 0.138, 0.718], 'animations/Stand/BodyTalk/Speaking/BodyTalk_5': [0.05, 0.05, 0.2, 0.5, 0.2], 'animations/Stand/BodyTalk/Speaking/BodyTalk_4': [0.03, 0.12, 0.7, 0.12, 0.03], 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_05': [0.53, 0.23, 0.08, 0.08, 0.08], 'animations/Stand/Self & others/NAO/Center_Neutral_SAO_03': [0.1, 0.25, 0.3, 0.25, 0.1], 'animations/Stand/Gestures/Explain_4': [0.1, 0.25, 0.3, 0.25, 0.1], 'animations/Stand/Gestures/Explain_1': [0.1, 0.25, 0.3, 0.25, 0.1], 'animations/Stand/Emotions/Positive/Happy_4': [0.048, 0.048, 0.048, 0.138, 0.718], 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_01': [0.05, 0.2, 0.5, 0.2, 0.05], 'animations/Stand/Gestures/Explain_9': [0.05, 0.2, 0.5, 0.2, 0.05], 'animations/Stand/Gestures/Explain_8': [0.05, 0.2, 0.5, 0.2, 0.05], 'animations/Stand/Negation/NAO/Center_Strong_NEG_01': [0.08, 0.08, 0.08, 0.23, 0.53], 'animations/Stand/Negation/NAO/Center_Strong_NEG_05': [0.53, 0.23, 0.08, 0.08, 0.08], 'animations/Stand/Self & others/NAO/Left_Neutral_SAO_01': [0.05, 0.2, 0.5, 0.2, 0.05], 'animations/Stand/Self & others/NAO/Left_Neutral_SAO_02': [0.05, 0.05, 0.2, 0.5, 0.2], 'animations/Stand/Self & others/NAO/Left_Strong_SAO_02': [0.05, 0.05, 0.2, 0.5, 0.2], 'animations/Stand/Space & time/NAO/Right_Slow_SAT_01': [0.05, 0.05, 0.2, 0.5, 0.2], 'animations/Stand/Exclamation/NAO/Left_Strong_EXC_03': [0.048, 0.048, 0.048, 0.138, 0.718], 'animations/Stand/Gestures/Desperate_5': [0.53, 0.23, 0.08, 0.08, 0.08], 'animations/Stand/Gestures/Desperate_2': [0.2, 0.5, 0.2, 0.05, 0.05]}
-
+		 'animations/Stand/BodyTalk/Speaking/BodyTalk_18': [0.25, 0.3, 0.25, 0.1, 0.1], 
+		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01': [0.05, 0.2, 0.5, 0.2, 0.05], 
+		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03': [0.05, 0.05, 0.2, 0.5, 0.2], 
+		 'animations/Stand/BodyTalk/Speaking/BodyTalk_11': [0.05, 0.2, 0.5, 0.2, 0.05], 
+		 'animations/Stand/BodyTalk/Speaking/BodyTalk_17': [0.03, 0.12, 0.7, 0.12, 0.03], 
+		 'animations/Stand/Emotions/Positive/Proud_2': [0.048, 0.048, 0.048, 0.138, 0.718], 
+		 'animations/Stand/Emotions/Positive/Confident_1': [0.08, 0.08, 0.08, 0.23, 0.53], 
+		 'animations/Stand/Exclamation/NAO/Center_Neutral_EXC_01': [0.1, 0.1, 0.25, 0.3, 0.25], 
+		 'animations/Stand/Exclamation/NAO/Right_Strong_EXC_04': [0.048, 0.048, 0.048, 0.138, 0.718], 
+		 'animations/Stand/BodyTalk/Speaking/BodyTalk_5': [0.05, 0.05, 0.2, 0.5, 0.2], 
+		 'animations/Stand/BodyTalk/Speaking/BodyTalk_4': [0.03, 0.12, 0.7, 0.12, 0.03], 
+		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_05': [0.53, 0.23, 0.08, 0.08, 0.08], 
+		 'animations/Stand/Self & others/NAO/Center_Neutral_SAO_03': [0.1, 0.25, 0.3, 0.25, 0.1], 
+		 'animations/Stand/Gestures/Explain_4': [0.1, 0.25, 0.3, 0.25, 0.1], 
+		 'animations/Stand/Gestures/Explain_1': [0.1, 0.25, 0.3, 0.25, 0.1], 
+		 'animations/Stand/Emotions/Positive/Happy_4': [0.048, 0.048, 0.048, 0.138, 0.718], 
+		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_01': [0.05, 0.2, 0.5, 0.2, 0.05], 
+		 'animations/Stand/Gestures/Explain_9': [0.05, 0.2, 0.5, 0.2, 0.05], 
+		 'animations/Stand/Gestures/Explain_8': [0.05, 0.2, 0.5, 0.2, 0.05], 
+		 'animations/Stand/Negation/NAO/Center_Strong_NEG_01': [0.08, 0.08, 0.08, 0.23, 0.53], 
+		 'animations/Stand/Negation/NAO/Center_Strong_NEG_05': [0.53, 0.23, 0.08, 0.08, 0.08], 
+		 'animations/Stand/Self & others/NAO/Left_Neutral_SAO_01': [0.05, 0.2, 0.5, 0.2, 0.05], 
+		 'animations/Stand/Self & others/NAO/Left_Neutral_SAO_02': [0.05, 0.05, 0.2, 0.5, 0.2], 
+		 'animations/Stand/Self & others/NAO/Left_Strong_SAO_02': [0.05, 0.05, 0.2, 0.5, 0.2], 
+		 'animations/Stand/Space & time/NAO/Right_Slow_SAT_01': [0.05, 0.05, 0.2, 0.5, 0.2], 
+		 'animations/Stand/Exclamation/NAO/Left_Strong_EXC_03': [0.048, 0.048, 0.048, 0.138, 0.718], 
+		 'animations/Stand/Gestures/Desperate_5': [0.53, 0.23, 0.08, 0.08, 0.08], 
+		 'animations/Stand/Gestures/Desperate_2': [0.2, 0.5, 0.2, 0.05, 0.05],
+		 'animations/Stand/Emotions/Positive/Excited_1': [0.048, 0.048, 0.048, 0.138, 0.718], 
+		 'animations/Stand/Gestures/You_3': [0.05, 0.2, 0.5, 0.2, 0.05], 
+		 'animations/Stand/Emotions/Negative/Disappointed_1': [0.718, 0.138, 0.048, 0.048, 0.048], 
+		 'animations/Stand/Negation/NAO/Right_Strong_NEG_01': [0.2, 0.5, 0.2, 0.05, 0.05], 
+		 'animations/Stand/Emotions/Negative/Frustrated_1': [0.53, 0.23, 0.08, 0.08, 0.08], 
+		 'animations/Stand/Gestures/Explain_3': [0.05, 0.2, 0.5, 0.2, 0.05], 
+		 'animations/Stand/BodyTalk/Speaking/BodyTalk_2': [0.1, 0.25, 0.3, 0.25, 0.1], 
+		 'animations/Stand/Gestures/Desperate_1': [0.718, 0.138, 0.048, 0.048, 0.048], 
+		 'animations/Stand/Emotions/Positive/Sure_1': [0.2, 0.5, 0.2, 0.05, 0.05]}
 
 
 	def init_gesture_handler(self):
@@ -135,7 +140,7 @@ class StoryTeller:
 	def quality_function(self, sentence, gesture):
 		annotation = json.loads(self.nlp.annotate(sentence, properties=self.props))
 		sentiment_distribution = annotation["sentences"][0]["sentimentDistribution"]
-		indx = np.argmax(self.gesture_to_sentiment[gesture])
+		indx = np.argmax(self.gesture_to_probability[gesture])
 		return sentiment_distribution[indx]
 
 
@@ -149,18 +154,18 @@ class StoryTeller:
 
 	def choose_most_app_gesture(self, sentence_index):
 		sentence = self.sentences[sentence_index]
-		annotation = json.loads(self.nlp.annotate(sentence, properties=self.props))
-		sentiment_distribution = annotation["sentences"][0]["sentimentDistribution"]
-		index = np.argmax(sentiment_distribution)
-		gesture = self.gesture_to_sentiment.keys()[index]
+		gestures = list(self.gesture_to_probability.keys())
+		quality_distribution = [self.error_function(sentence, gesture) for gesture in gestures]
+		index = np.argmin(quality_distribution)
+		gesture = gestures[index]
 		return gesture
 
 	def choose_least_app_gesture(self, sentence_index):
 		sentence = self.sentences[sentence_index]
-		annotation = json.loads(self.nlp.annotate(sentence, properties=self.props))
-		sentiment_distribution = annotation["sentences"][0]["sentimentDistribution"]
-		index = np.argmin(sentiment_distribution)
-		gesture = self.gesture_to_sentiment.keys()[index]
+		gestures = list(self.gesture_to_probability.keys())
+		quality_distribution = [self.error_function(sentence, gesture) for gesture in gestures]
+		index = np.argmax(quality_distribution)
+		gesture = gestures[index]
 		return gesture
 
 
@@ -212,8 +217,8 @@ class StoryTeller:
 
 
 	def choose_gesture(self, sentence_index):
-		gesture_index = randint(0, len(self.gesture_to_sentiment) - 1)
-		gesture = self.gesture_to_sentiment.keys()[gesture_index]
+		gesture_index = randint(0, len(self.gesture_to_probability) - 1)
+		gesture = self.gesture_to_probability.keys()[gesture_index]
 		return gesture
 
 
@@ -262,8 +267,8 @@ def run_simulations(story_teller):
 	plt.ylim((0.0, 1.0))
 	plt.plot(simulation_range, simulations, color="blue", label="Random choice")
 	plt.plot(simulation_range, [hardcoded]*num_simulations, color="green", label="Hardcoded")
-	#plt.plot(simulation_range, [best]*num_simulations, color="green")
-	#plt.plot(simulation_range, [worst]*num_simulations, color="green")
+	plt.plot(simulation_range, [best]*num_simulations, color="red")
+	plt.plot(simulation_range, [worst]*num_simulations, color="pink")
 	plt.xlabel("Time")
 	plt.ylabel("Loss")
 	plt.legend()
