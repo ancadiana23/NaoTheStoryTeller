@@ -20,7 +20,7 @@ class StoryTeller:
 	    return ALProxy(name, self.ip, self.port)
 
 	def __init__(self):
-		self.init_stories()
+		#self.init_stories()
 		self.init_gestures()
 		#self.init_gesture_handler()
 		self.init_sentiment_analysis_client()
@@ -75,8 +75,22 @@ class StoryTeller:
 
 		# Filter out the delimeters from the sentences list.
 		self.sentences = self.sentences[0::2]
-		print(self.story)
-		print(self.sentences)
+		#print(self.story)
+		#print(self.sentences)
+
+	def get_corenlp_sentiment(self, sentence):
+		annotation = json.loads(self.nlp.annotate(sentence, \
+								properties=self.props))
+		sentiment_distribution = annotation["sentences"][0]["sentimentDistribution"]
+		return sentiment_distribution
+	
+	def init_sentence_to_sentiment(self):
+		self.sentences_sentiment_distribution = \
+			[self.get_corenlp_sentiment(sentence) for sentence in self.sentences]
+
+
+	def init_gesture_list(self):
+		self.gesture_list = list(self.gesture_to_probability.keys())
 
 
 	def init_gestures(self):
