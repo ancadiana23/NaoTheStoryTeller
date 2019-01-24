@@ -147,26 +147,31 @@ class QLearner:
 			self.learning_rate -= learning_rate_step
 			random.shuffle(self.dataset)
 			for story in self.dataset:
-				for (i, sentence) in enumerate(story["story"][:-1]):
+				for (i, sentence) in enumerate(story["story"]):
 					state = self.sentence_to_state[sentence]
 					if state not in self.state_action_table:
 						self.state_action_table[state] = {}
 					gesture = self.choose_action(state)
 
 					reward = self.reward(state, gesture)
-					next_state = self.sentence_to_state[story["story"][i + 1]]
-					next_action = self.best_action(next_state)
-					next_utility = self.state_action_table.get(
-					        next_state, {}).get(next_action, 0.0)
+					next_utility = 0.0
+					penalty = 0.0
+					if i != len(story["story"]) - 1:
+						next_state = self.sentence_to_state[story["story"][i + 1]]
+						next_action = self.best_action(next_state)
+						next_utility = self.state_action_table.get(
+						        next_state, {}).get(next_action, 0.0)
+						if next_action == gesture:
+							penalty = -3.0
 					current_utility = self.state_action_table[state].get(
 					        gesture, 0.0)
+					
 					self.state_action_table[state][gesture] = \
-                                                                  current_utility + \
-                                                                  self.learning_rate * \
-                                                                   (reward + self.decay * next_utility - current_utility)
+                          current_utility + \
+                          self.learning_rate * \
+                           (reward + self.decay * next_utility + penalty - current_utility)
 			epoch+=1
 
-		#return best_state_action_table
 
 	def test(self):
 		error = 0.0
@@ -179,7 +184,7 @@ class QLearner:
 				gesture = self.best_action(state)
 				error += self.error(state, gesture)
 				quality += self.reward(state, gesture)
-		return quality / num_sen, error
+		return quality / num_sen, error / num_sen
 
 	def plot_data(self,data,title = "",mean=False):
 		#if mean:
@@ -237,6 +242,14 @@ def best_action(state, state_action_table):
                                key=lambda (x, y): y)
 	gesture = gesture[0]
 	return gesture
+
+def best_action(state, state_action_table):
+	# move to utils
+	gesture = max(state_action_table[state].items(), \
+                               key=lambda (x, y): y)
+	gesture = gesture[0]
+	return gesture
+
 
 if __name__ == "__main__":
 	story_teller = StoryTeller()

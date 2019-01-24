@@ -4,6 +4,7 @@ import naoqi
 import numpy as np
 import re
 
+from ast import literal_eval as make_tuple
 from naoqi import ALProxy
 from random import randint
 from stanfordcorenlp import StanfordCoreNLP
@@ -27,7 +28,7 @@ class StoryTeller:
 
 
 	def init_robot_connection(self):
-		self.ip = "169.254.233.204"
+		self.ip = "169.254.235.195"
 		self.port = 9559
 		self.tts = self.get_session(TTSAPI)
 		self.memory = self.get_session("ALMemory")
@@ -77,6 +78,27 @@ class StoryTeller:
 		self.sentences = self.sentences[0::2]
 		#print(self.story)
 		#print(self.sentences)
+	
+
+	def init_story(self):
+		with open("aesopFables.json") as file:
+			dataset = json.load(file)["stories"]
+		self.story = dataset[44]
+		self.sentences = self.story["story"]
+		processed_story = [" \\mrk=" + str(i + 1) + "\\ " + str(self.sentences[i]) \
+					 for i in range(len(self.sentences))]
+		
+		# Reconstruct the story.
+		# "\\bound=S\\ \\vol=80\\ \\vct=100\\ \\rspd=85\\" + \
+		self.story["story"] = "\\rspd=85\\" + \
+							  "".join(processed_story)
+
+
+	def init_policy(self):
+		with open("best_policy.json") as file:
+			policy = json.load(file)
+		self.policy = {make_tuple(x): str(y) for (x, y) in policy.items()}
+
 
 	def get_corenlp_sentiment(self, sentence):
 		annotation = json.loads(self.nlp.annotate(sentence, \
@@ -235,23 +257,42 @@ class StoryTeller:
 		gesture = self.gesture_to_probability.keys()[gesture_index]
 		return gesture
 
+	def choose_policy_gesture(self, sentence_index):
+		# TODO move to utils
+		sentence = self.sentences[sentence_index]
+		state = self.get_corenlp_sentiment(sentence)
+		state = tuple([round(x, 1) for x in state])
+		return self.policy[state]
+
 
 	def bookmark_handler(self, value):
 		print("Value = ", value)
-		gesture = self.choose_gesture()
+		#gesture = self.choose_gesture()
 		#gesture = self.choose_best_gesture(int(value))
+		if int(value) == 0:
+			return
+		index = int(value) - 1
+		gesture = self.choose_policy_gesture(index)
 		self.anim.run(gesture)
-		quality = self.quality_function(self.sentences[int(value)], gesture)
+		quality = self.quality_function(self.sentences[index], gesture)
 		self.quality_sum += quality
 
 
 	def main(self):
 		self.init_robot_connection()
+		self.init_story()
+		self.init_policy()
+
 		self.quality_sum = 0.0
 		memory_service = self.memory.session().service("ALMemory")
 		self.sub = memory_service.subscriber("ALTextToSpeech/CurrentBookMark")
 		self.sub.signal.connect(self.bookmark_handler)
-		self.tts.say(self.story)
+		
+		self.anim.run("animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03")
+		self.tts.say(str(self.story["title"]))
+		self.tts.say(str(self.story["story"]))
+		self.anim.run("animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03")
+		self.tts.say("Moral of the story: " + str(self.story["moral"]))
 		
 		self.quality_sum = self.quality_sum / len(self.sentences)
 		print(self.quality_sum)
@@ -292,7 +333,7 @@ def run_simulations(story_teller):
 
 if __name__ == "__main__":
 	story_teller = StoryTeller()
-	#story_teller.main()
-	run_simulations(story_teller)
+	story_teller.main()
+	#run_simulations(story_teller)
 	
 
