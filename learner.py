@@ -3,6 +3,8 @@ import numpy as np
 import random
 import time
 
+import matplotlib.pyplot as plt
+
 import pprint
 
 import re
@@ -44,6 +46,7 @@ class QLearner:
 			pool.join()
 			for i, sentence in enumerate(story["story"]):
 				self.sentence_to_state[sentence] = results[i]
+				#self.sentence_to_state[sentence] = self.get_corenlp_sentiment(sentence)
 		print("TIMEIT - {:2f}".format(time.time() - start))
 
 	def get_corenlp_sentiment(self, sentence):
@@ -109,28 +112,39 @@ class QLearner:
 
 	def train(self):
 		start = time.time()
-		#best_qual = 0.0
-		#best_state_action_table = {}
+		qualities = []
+		losses = []
+		best_qual = 0.0
+		best_state_action_table = {}
 		learning_rate_step = (self.start_learning_rate -
 		                      self.end_learning_rate) / self.num_epochs
 		self.learning_rate = self.start_learning_rate
-		for epoch in range(self.num_epochs):
-			self.learning_rate -= learning_rate_step
+		epoch = 0
+		while True:
+
 			if epoch % 250 == 0:
 				_, error = self.test()
 				print("Epoch {} - Loss: {:4f}, time: {:2f}s".format(
 				        epoch, error,
 				        time.time() - start))
 				#print("Iter %r: loss=%.4f, time=%.2fs" % (epoch, error, time.time()-start))
-			if epoch % 1000 == 0:
+			if epoch % 500 == 0:
 				quality, error = self.test()
+				qualities.append(quality)
+				losses.append(error)
 				print("----> Epoch {}: quality: {:4f} - Loss: {:4f}".format(
 				        epoch, quality, error))
 				# save best model parameters
-				#if quality > best_qual:
-				#	print("new highscore")
-				#	best_eval = quality
-				#	best_state_action_table = self.state_action_table.copy()
+				if quality > best_qual:
+					print("new highscore")
+					best_qual = quality
+					best_state_action_table = self.state_action_table.copy()
+			if epoch == self.num_epochs:
+				print("Done training")
+				print("----> Best quality: {:4f}".format(best_qual))
+				return qualities, losses, best_state_action_table
+
+			self.learning_rate -= learning_rate_step
 			random.shuffle(self.dataset)
 			for story in self.dataset:
 				for (i, sentence) in enumerate(story["story"][:-1]):
@@ -150,6 +164,8 @@ class QLearner:
                                                                   current_utility + \
                                                                   self.learning_rate * \
                                                                    (reward + self.decay * next_utility - current_utility)
+			epoch+=1
+
 		#return best_state_action_table
 
 	def test(self):
@@ -165,25 +181,62 @@ class QLearner:
 				quality += self.reward(state, gesture)
 		return quality / num_sen, error
 
+	def plot_data(self,data,title = "",mean=False):
+		#if mean:
+		#	data.append(np.mean(data,axis=0))
+		fig, ax = plt.subplots(figsize=(10, 7))
+		ax.set_title(title)
+		#data.append(np.mean(data, axis = 0))
+		#for i in range(len(data)):
+		#label = "run #{}".format(i+1)
+		#if mean and i == len(data):
+		#	label = ("mean run")
+		x = [x*500 for x in range(len(data))]
+		y = data
+		#ax.plot(x,y,label=label)
+		ax.plot(x,y)
+		#ax.legend(loc='upper right')
+		axes = fig.gca()
+		axes.set_xlim([None,len(data)*500])
+		axes.set_ylim([0,None])
+		fig.tight_layout()
+		#fig.show()
+		fig.savefig("{}.png".format(title))
+
 	def main(self):
-		for _ in range(5):
+		for _ in range(1):
 			print("-" * 10)
 			self.state_action_table = {}
 			quality, error = self.test()
 			#print("Error ", error)
 			print("----> Quality: {:4f} - Loss: {:4f}".format(quality, error))
-			self.train()
-			sum_actions = sum([
-			        len(self.state_action_table[x])
-			        for x in self.state_action_table
-			])
+			q,l, best_policy = self.train()
+			with open("best_policy.json", "w") as file:
+				best_policy = {str(state): best_action(state, best_policy) for state in best_policy}
+				json.dump(best_policy,file)
+			#print( len(q))
+			#print(len(l))
+			#sum_actions = sum([
+			#        len(self.state_action_table[x])
+			#        for x in self.state_action_table
+			#])
 			#print("Actions ", sum_actions, "; States: ",
 			#      len(self.state_action_table.keys()))
 			#print(sum_actions / len(self.state_action_table.keys()))
-			quality, error = self.test()
+			#quality, error = self.test()
 			#print("Error ", error)
-			print("----> Quality: {:4f} - Loss: {:4f}".format(quality, error))
+			#print("----> Quality: {:4f} - Loss: {:4f}".format(quality, error))
+			#self.plot_data(list(q),mean=True)
+			#self.plot_data(list(l),mean=True)
+			self.plot_data(q,title="Quality")
+			self.plot_data(l,title="Loss")
 
+def best_action(state, state_action_table):
+	# move to utils
+	gesture = max(state_action_table[state].items(), \
+                               key=lambda (x, y): y)
+	gesture = gesture[0]
+	return gesture
 
 if __name__ == "__main__":
 	story_teller = StoryTeller()
