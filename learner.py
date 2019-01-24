@@ -109,8 +109,8 @@ class QLearner:
 
 	def train(self):
 		start = time.time()
-		#best_qual = 0.0
-		#best_state_action_table = {}
+		best_qual = 0.0
+		best_state_action_table = {}
 		learning_rate_step = (self.start_learning_rate -
 		                      self.end_learning_rate) / self.num_epochs
 		self.learning_rate = self.start_learning_rate
@@ -122,35 +122,42 @@ class QLearner:
 				        epoch, error,
 				        time.time() - start))
 				#print("Iter %r: loss=%.4f, time=%.2fs" % (epoch, error, time.time()-start))
-			if epoch % 1000 == 0:
+			if epoch % 50 == 0:
 				quality, error = self.test()
 				print("----> Epoch {}: quality: {:4f} - Loss: {:4f}".format(
 				        epoch, quality, error))
 				# save best model parameters
-				#if quality > best_qual:
-				#	print("new highscore")
-				#	best_eval = quality
-				#	best_state_action_table = self.state_action_table.copy()
+				if quality > best_qual:
+					print("new highscore")
+					best_eval = quality
+					best_state_action_table = self.state_action_table.copy()
 			random.shuffle(self.dataset)
 			for story in self.dataset:
-				for (i, sentence) in enumerate(story["story"][:-1]):
+				for (i, sentence) in enumerate(story["story"]):
 					state = self.sentence_to_state[sentence]
 					if state not in self.state_action_table:
 						self.state_action_table[state] = {}
 					gesture = self.choose_action(state)
 
 					reward = self.reward(state, gesture)
-					next_state = self.sentence_to_state[story["story"][i + 1]]
-					next_action = self.best_action(next_state)
-					next_utility = self.state_action_table.get(
-					        next_state, {}).get(next_action, 0.0)
+					next_utility = 0.0
+					penalty = 0.0
+					if i != len(story["story"]) - 1:
+						next_state = self.sentence_to_state[story["story"][i + 1]]
+						next_action = self.best_action(next_state)
+						next_utility = self.state_action_table.get(
+						        next_state, {}).get(next_action, 0.0)
+						if next_action == gesture:
+							penalty = -3.0
 					current_utility = self.state_action_table[state].get(
 					        gesture, 0.0)
+					
 					self.state_action_table[state][gesture] = \
-                                                                  current_utility + \
-                                                                  self.learning_rate * \
-                                                                   (reward + self.decay * next_utility - current_utility)
-		#return best_state_action_table
+                          current_utility + \
+                          self.learning_rate * \
+                           (reward + self.decay * next_utility + penalty - current_utility)
+		return best_state_action_table
+
 
 	def test(self):
 		error = 0.0
@@ -163,16 +170,21 @@ class QLearner:
 				gesture = self.best_action(state)
 				error += self.error(state, gesture)
 				quality += self.reward(state, gesture)
-		return quality / num_sen, error
+		return quality / num_sen, error / num_sen
+
 
 	def main(self):
-		for _ in range(5):
+		for _ in range(1):
 			print("-" * 10)
 			self.state_action_table = {}
 			quality, error = self.test()
 			#print("Error ", error)
 			print("----> Quality: {:4f} - Loss: {:4f}".format(quality, error))
-			self.train()
+			best_policy = self.train()
+			best_policy = {str(state): best_action(state, best_policy) for state in best_policy}
+			with open("best_policy.json", "w+") as file:
+				json.dump(best_policy, file)
+
 			sum_actions = sum([
 			        len(self.state_action_table[x])
 			        for x in self.state_action_table
@@ -183,6 +195,14 @@ class QLearner:
 			quality, error = self.test()
 			#print("Error ", error)
 			print("----> Quality: {:4f} - Loss: {:4f}".format(quality, error))
+
+
+def best_action(state, state_action_table):
+	# move to utils
+	gesture = max(state_action_table[state].items(), \
+                               key=lambda (x, y): y)
+	gesture = gesture[0]
+	return gesture
 
 
 if __name__ == "__main__":
