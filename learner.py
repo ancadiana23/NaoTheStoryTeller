@@ -24,18 +24,28 @@ class QLearner:
 		self.decay = 0.9
 		self.start_epsilon = 0
 		self.end_epsilon = 1.0
-		self.num_epochs = 100
+		self.num_epochs = 5
 		self.init_dataset()
 		self.init_sentence_to_state()
 		self.state_action_table = {}
+		self.test_while_training = True
 		print("Learning rate {}", self.start_learning_rate)
 		print("Decay {}", self.decay)
 		print("Epsilon {}", self.start_epsilon)
 		print("Num epoch {}", self.num_epochs)
 
+
 	def init_dataset(self):
 		with open("aesopFables.json") as file:
 			self.dataset = json.load(file)["stories"]
+		num_testing_stories = int((20.0 / 100.0) * len(self.dataset))
+		# Take random 20% os the stories and delete of the duplicates.
+		self.testing_set = set([random.randint(0, len(self.dataset) - 1) for _ in range(num_testing_stories)])
+		self.testing_set = [self.dataset[x] for x in self.testing_set]
+
+		# All the stories that are not in the testing set.
+		self.training_set = [x for x in self.dataset if x not in self.testing_set]
+		
 
 	def init_sentence_to_state(self):
 		self.sentence_to_state = {}
@@ -62,7 +72,7 @@ class QLearner:
 	def learn_transitions(self):
 		self.transition_table = {}
 
-		for story in self.dataset:
+		for story in self.training_set:
 			previous_sentence = None
 			for sentence in story["story"]:
 				current_sentence = self.get_corenlp_sentiment(sentence)
@@ -76,8 +86,8 @@ class QLearner:
 			num_next_states = len(self.transition_table[current_sentence])
 			counter = Counter(self.transition_table[current_sentence])
 			self.transition_table[current_sentence] = \
-                                                            {sentence: occurences/num_next_states \
-                                                            for (sentence, occurences) in counter.most_common()}
+                            {sentence: occurences/num_next_states \
+                            for (sentence, occurences) in counter.most_common()}
 
 	def choose_action(self, state):
 		if random.uniform(0.0, 1.0) < self.epsilon:
@@ -111,8 +121,10 @@ class QLearner:
 
 	def train(self):
 		start = time.time()
-		qualities = []
-		losses = []
+		test_qualities = []
+		test_losses = []
+		train_qualities = []
+		train_losses = []
 		best_qual = 0.0
 		best_state_action_table = {}
 		learning_rate_step = (self.start_learning_rate -
@@ -121,35 +133,26 @@ class QLearner:
 		                      self.start_epsilon) / self.num_epochs
 		self.learning_rate = self.start_learning_rate
 		self.epsilon = self.start_epsilon
-		epoch = 0
-		while True:
-
-			if epoch % 1 == 0:
-				_, error = self.test()
-				print("Epoch {} - Loss: {:4f}, time: {:2f}s".format(
-				        epoch, error,
-				        time.time() - start))
-				#print("Iter %r: loss=%.4f, time=%.2fs" % (epoch, error, time.time()-start))
-			if epoch % 1 == 0:
-				quality, error = self.test()
-				qualities.append(quality)
-				losses.append(error)
-				print("----> Epoch {}: quality: {:4f} - Loss: {:4f}".format(
-				        epoch, quality, error))
-				# save best model parameters
-				if quality > best_qual:
-					print("new highscore")
-					best_qual = quality
-					best_state_action_table = self.state_action_table.copy()
-			if epoch == self.num_epochs:
-				print("Done training")
-				print("----> Best quality: {:4f}".format(best_qual))
-				return qualities, losses, best_state_action_table
-
+		
+		for epoch in range(self.num_epochs):				
 			self.learning_rate -= learning_rate_step
 			self.epsilon += epsilon_rate_step
-			random.shuffle(self.dataset)
-			for story in self.dataset:
+			random.shuffle(self.training_set)
+			for story in self.training_set:
+				test_quality, test_error = self.test("test")
+				train_quality, train_error = self.test("train")
+				
+				test_qualities.append(test_quality)
+				test_losses.append(test_error)
+
+				train_qualities.append(train_quality)
+				train_losses.append(train_error)
+				
+				if test_quality > best_qual:
+					print("new highscore")
+					best_qual = test_quality
+					best_state_action_table = self.state_action_table.copy()
+
 				for (i, sentence) in enumerate(story["story"]):
 					state = self.sentence_to_state[sentence]
 					if state not in self.state_action_table:
@@ -176,11 +179,21 @@ class QLearner:
                                                          (reward + self.decay * next_utility + penalty - current_utility)
 			epoch += 1
 
-	def test(self):
+		print("Done training")
+		print("----> Best quality: {:4f}".format(best_qual))
+		return train_qualities, train_losses, test_qualities, test_losses, best_state_action_table
+
+
+	def test(self, select_set):
 		error = 0.0
 		quality = 0.0
 		num_sen = 0
-		for story in self.dataset:
+		selected_set = None
+		if select_set == "train":
+			selected_set = self.training_set
+		elif select_set == "test":
+			selected_set = self.testing_set
+		for story in selected_set:
 			num_sen += len(story["story"])
 			for sentence in story["story"]:
 				state = self.sentence_to_state[sentence]
@@ -189,39 +202,34 @@ class QLearner:
 				quality += self.reward(state, gesture)
 		return quality / num_sen, error / num_sen
 
-	def plot_data(self, data, title="", mean=False):
-		#if mean:
-		#	data.append(np.mean(data,axis=0))
+	def plot_data(self, train_data, test_data, title="Quality over time", mean=False):
 		fig, ax = plt.subplots(figsize=(10, 7))
 		ax.set_title(title)
-		#data.append(np.mean(data, axis = 0))
-		#for i in range(len(data)):
-		#label = "run #{}".format(i+1)
-		#if mean and i == len(data):
-		#	label = ("mean run")
-		x = [x * 1 for x in range(len(data))]
-		y = data
-		#ax.plot(x,y,label=label)
-		ax.plot(x, y)
-		#ax.legend(loc='upper right')
-		axes = fig.gca()
-		axes.set_xlim([None, len(data) * 1])
-		axes.set_ylim([0, 1])
-		#fig.tight_layout()
+
+		x_data = range(len(train_data))
+		ax.plot(x_data, train_data, label="Training set")
+		ax.plot(x_data, test_data, label="Testing set")
+		for xc in range(0, len(x_data), len(self.training_set)):
+			plt.axvline(x=xc)
+		plt.xlabel("Stories")
+		plt.ylabel("Quality")
+		ax.legend(loc='upper right')
 		
-		#fig.show()
+		axes = fig.gca()
+		#axes.set_xlim([None, len(train_data) * 1])
+		axes.set_ylim([0, 1])
+		
+
+
 		fig.savefig("{}.png".format(title))
 
 	def main(self):
-		total_q = []
-		total_l = []
-		for indx in range(5):
+		total_q_train = []
+		total_q_test = []
+		for indx in range(1):
 			print("-" * 10)
 			self.state_action_table = {}
-			#quality, error = self.test()
-			#print("Error ", error)
-			#print("----> Quality: {:4f} - Loss: {:4f}".format(quality, error))
-			q, l, best_policy = self.train()
+			train_qualities, train_losses, test_qualities, test_losses, best_policy = self.train()
 			title = "best_policy_run{}.json".format(indx)
 			quality_title = "quality_run{}".format(indx)
 			loss_title = "loss_run{}".format(indx)
@@ -231,28 +239,14 @@ class QLearner:
 				        for state in best_policy
 				}
 				json.dump(best_policy, file)
-			#print( len(q))
-			#print(len(l))
-			#sum_actions = sum([
-			#        len(self.state_action_table[x])
-			#        for x in self.state_action_table
-			#])
-			#print("Actions ", sum_actions, "; States: ",
-			#      len(self.state_action_table.keys()))
-			#print(sum_actions / len(self.state_action_table.keys()))
-			#quality, error = self.test()
-			#print("Error ", error)
-			#print("----> Quality: {:4f} - Loss: {:4f}".format(quality, error))
-			#self.plot_data(list(q),mean=True)
-			#self.plot_data(list(l),mean=True)
-			self.plot_data(q, title=quality_title)
-			self.plot_data(l, title=loss_title)
-			total_q.append(q)
-			total_l.append(l)
-		with open("Quality_Total_json", "w") as file:
-			json.dump(total_q,file)
-		with open("Loss_Total_json", "w") as file:
-			json.dump(total_l,file)
+			self.plot_data(train_qualities, test_qualities, title=quality_title)
+			self.plot_data(train_losses, test_losses, title=loss_title)
+			total_q_train.append(train_qualities)
+			total_q_test.append(test_qualities)
+		with open("Quality_Total_Train_json", "w") as file:
+			json.dump(total_q_train,file)
+		with open("Loss_Total_Test_json", "w") as file:
+			json.dump(total_q_test,file)
 
 
 def best_action(state, state_action_table):
