@@ -24,7 +24,7 @@ class QLearner:
 		self.decay = 0.9
 		self.start_epsilon = 0
 		self.end_epsilon = 1.0
-		self.num_epochs = 5
+		self.num_epochs = 10
 		self.init_dataset()
 		self.init_sentence_to_state()
 		self.state_action_table = {}
@@ -149,7 +149,6 @@ class QLearner:
 				train_losses.append(train_error)
 				
 				if test_quality > best_qual:
-					print("new highscore")
 					best_qual = test_quality
 					best_state_action_table = self.state_action_table.copy()
 
@@ -210,7 +209,7 @@ class QLearner:
 		ax.plot(x_data, train_data, label="Training set")
 		ax.plot(x_data, test_data, label="Testing set")
 		for xc in range(0, len(x_data), len(self.training_set)):
-			plt.axvline(x=xc)
+			plt.axvline(x=xc, linewidth=1, color='grey')
 		plt.xlabel("Stories")
 		plt.ylabel("Quality")
 		ax.legend(loc='upper right')
