@@ -22,16 +22,17 @@ class StoryTeller:
 
 	def __init__(self):
 		#self.init_stories()
-		self.init_gestures()
+		#self.init_gestures()
 		#self.init_gesture_handler()
-		self.init_sentiment_analysis_client()
-
+		#self.init_sentiment_analysis_client()
+		return
 
 	def init_robot_connection(self):
-		self.ip = "169.254.235.195"
+		self.ip = "169.254.156.88"
 		self.port = 9559
 		self.tts = self.get_session(TTSAPI)
 		self.memory = self.get_session("ALMemory")
+		self.leds = self.get_session("ALLeds")
 		self.anim = self.get_session("ALAnimationPlayer")
 	
 
@@ -310,6 +311,25 @@ class StoryTeller:
 		self.error_sum = self.error_sum / (len(self.sentences))
 		return self.error_sum
 
+	def try_leds(self):
+		self.init_robot_connection()
+		# up
+		self.leds.fadeRGB("FaceLed0", 1.0, 0.0, 0.0, 2)
+		self.leds.fadeRGB("FaceLed1", 0.0, 1.0, 0.0, 2)
+		# inner corner
+		self.leds.fadeRGB("FaceLed2", 0.0, 0.0, 1.0, 2)
+		self.leds.fadeRGB("FaceLed3", 1.0, 1.0, 0.0, 2)
+		# down
+		self.leds.fadeRGB("FaceLed4", 1.0, 0.0, 1.0, 2)
+		self.leds.fadeRGB("FaceLed5", 0.0, 1.0, 1.0, 2)
+		# outer corner
+		self.leds.fadeRGB("FaceLed6", 1.0, 1.0, 1.0, 2)
+		self.leds.fadeRGB("FaceLed7", 0.0, 0.0, 0.0, 2)
+		#print(self.leds.listGroup("FaceLeds"))
+		print(self.leds.listLEDs())
+
+
+
 def run_simulations(story_teller):
 	num_simulations = 50
 	simulation_range = range(num_simulations)
@@ -331,9 +351,11 @@ def run_simulations(story_teller):
 	plt.savefig('loss_over_time.png')
 
 
+
 if __name__ == "__main__":
 	story_teller = StoryTeller()
-	story_teller.main()
+	#story_teller.main()
 	#run_simulations(story_teller)
+	#story_teller.try_leds()
 	
 
