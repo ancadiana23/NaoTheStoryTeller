@@ -31,7 +31,7 @@ class StoryTeller:
 		#self.init_robot_connection()
 
 	def init_robot_connection(self):
-		self.ip = "169.254.177.0"
+		self.ip = "169.254.141.11"
 		self.port = 9559
 		self.tts = self.get_session(TTSAPI)
 		self.memory = self.get_session("ALMemory")
@@ -44,33 +44,38 @@ class StoryTeller:
 		self.story = dataset[20]
 		self.sentences = self.story["story"]
 		processed_story = [" \\mrk=" + str(i + 2) + "\\ " + str(self.sentences[i]) \
-					 for i in range(len(self.sentences))]
-		
+            for i in range(len(self.sentences))]
+
 		self.story["story"] = "\\rspd=85\\" + \
-							  "".join(processed_story)
+               "".join(processed_story)
 
 	def init_policy(self):
 		with open("best_policy_run0.json") as file:
 			policy = json.load(file)
 		self.policy = {make_tuple(x): str(y) for (x, y) in policy.items()}
 
+	def init_led_policy(self):
+		with open("best_policy_run_leds0.json") as file:
+			policy = json.load(file)
+		self.led_policy = {make_tuple(x): str(y) for (x, y) in policy.items()}
+
 	def get_corenlp_sentiment(self, sentence):
 		annotation = json.loads(self.nlp.annotate(sentence, \
-                                                                    properties=self.props))
+                                                                          properties=self.props))
 		sentiment_distribution = annotation["sentences"][0][
 		        "sentimentDistribution"]
 		return sentiment_distribution
 
 	def init_sentence_to_sentiment(self):
 		self.sentences_sentiment_distribution = \
-                                                               [self.get_corenlp_sentiment(sentence) for sentence in self.sentences]
+                                                                     [self.get_corenlp_sentiment(sentence) for sentence in self.sentences]
 
 	def init_gesture_list(self):
 		self.gesture_list = list(self.gesture_to_probability.keys())
 
 	def init_gestures(self):
 		self.gesture_to_probability = \
-                                                              {'animations/Stand/Emotions/Negative/Fearful_1': [0.718, 0.138, 0.048, 0.048, 0.048],
+                                                                    {'animations/Stand/Emotions/Negative/Fearful_1': [0.718, 0.138, 0.048, 0.048, 0.048],
 		 'animations/Stand/BodyTalk/Speaking/BodyTalk_18': [0.25, 0.3, 0.25, 0.1, 0.1],
 		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01': [0.05, 0.2, 0.5, 0.2, 0.05],
 		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03': [0.05, 0.05, 0.2, 0.5, 0.2],
@@ -110,8 +115,7 @@ class StoryTeller:
 		 'animations/Stand/Emotions/Positive/Sure_1': [0.2, 0.5, 0.2, 0.05, 0.05]}
 
 		self.neutral_gestures = [x for x in self.gesture_to_probability \
-									if np.argmax(self.gesture_to_probability[x]) == 2]
-
+               if np.argmax(self.gesture_to_probability[x]) == 2]
 
 	def init_leds_gestures(self):
 		self.led_gesture = {
@@ -146,13 +150,13 @@ class StoryTeller:
 		                    [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
 		}
 		self.leds_to_emotion = {
-		        "anger": [1,0.5],
-		        "surprise": [3,0.7],
-		        "disgust": [1,0.6],
-		        "sadness": [0,0.5],
-		        "happiness": [4,0.7],
-		        "fear": [1,0.6],
-				"neutral" : [2,0.3]
+		        "anger": [1, 0.5],
+		        "surprise": [3, 0.7],
+		        "disgust": [1, 0.6],
+		        "sadness": [0, 0.5],
+		        "happiness": [4, 0.7],
+		        "fear": [1, 0.6],
+		        "neutral": [2, 0.3]
 		}
 
 	def init_gesture_handler(self):
@@ -255,12 +259,10 @@ class StoryTeller:
 		]
 		return gest_to_use[sentence_index - 1]
 
-
 	def choose_gesture(self, _):
 		gesture_index = randint(0, len(self.gesture_to_probability) - 1)
 		gesture = self.gesture_to_probability.keys()[gesture_index]
 		return gesture
-
 
 	def choose_policy_gesture(self, sentence_index):
 		# TODO move to utils
@@ -275,7 +277,21 @@ class StoryTeller:
 		print("Random Neutral Gesture")
 		return choice(self.neutral_gestures)
 
+	def choose_policy_led(self, sentence_index):
+		# TODO move to utils
+		sentence = self.sentences[sentence_index]
+		state = self.get_corenlp_sentiment(sentence)
+		state = tuple([round(x, 1) for x in state])
+		if state in self.led_policy:
+			return self.led_policy[state]
+
+		# if the state is not contained in the policy
+		# return a random gesture
+		print("Random Neutral Gesture")
+		return choice(self.led_gesture)
+
 	def bookmark_handler(self, value):
+		self.reset_eyes()
 		print("Value = ", value)
 		#gesture = self.choose_gesture()
 		#gesture = self.choose_best_gesture(int(value))
@@ -286,26 +302,40 @@ class StoryTeller:
 			gesture = "animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03"
 		else:
 			gesture = self.choose_policy_gesture(index)
+			led = self.choose_policy_led(index)
 		self.anim.run(gesture)
 		quality = self.quality_function(self.sentences[index], gesture)
 		self.quality_sum += quality
+		
+
+	def change_eyes(self, emotion):
+		rgb_list = self.led_gesture[emotion]
+		for i in range(8):
+			rgb = rgb_list[i]
+			self.leds.fadeRGB("FaceLed{}".format(i), rgb[0], rgb[1], rgb[2], 1)
+
+	def reset_eyes(self):
+		for i in range(8):
+			self.leds.reset("FaceLed{}".format(i))
 
 	def main(self):
 		self.init_robot_connection()
 		self.init_gesture_handler()
 		self.init_stories()
 		self.init_policy()
+		self.init_led_policy()
 
 		self.quality_sum = 0.0
 		memory_service = self.memory.session().service("ALMemory")
 		self.sub = memory_service.subscriber("ALTextToSpeech/CurrentBookMark")
 		self.sub.signal.connect(self.bookmark_handler)
-		
+
 		#self.anim.run("animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03")
-		self.tts.say(" \\mrk=1\\ "  + str(self.story["title"]))
+		self.tts.say(" \\mrk=1\\ " + str(self.story["title"]))
 		self.tts.say(str(self.story["story"]))
 		#self.anim.run("animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03")
-		self.tts.say("Moral of the story: \\mrk=1\\ " + str(self.story["moral"]))
+		self.tts.say("Moral of the story: \\mrk=1\\ " +
+		             str(self.story["moral"]))
 		self.quality_sum = self.quality_sum / len(self.sentences)
 		print(self.quality_sum)
 
