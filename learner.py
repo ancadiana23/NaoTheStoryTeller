@@ -4,9 +4,7 @@ import random
 import time
 
 import matplotlib.pyplot as plt
-
 import pprint
-
 import re
 
 from collections import Counter
@@ -47,8 +45,8 @@ class QLearner:
 		self.training_set = [x for x in self.dataset if x not in self.testing_set]
 		
 
-	def init_sentence_to_state(self):
-		self.sentence_to_state = {}
+	def init_sentence_to_sentiment(self):
+		self.sentence_to_sentiment = {}
 		start = time.time()
 		for story in self.dataset:
 			pool = ThreadPool(4)
@@ -56,9 +54,16 @@ class QLearner:
 			pool.close()
 			pool.join()
 			for i, sentence in enumerate(story["story"]):
-				self.sentence_to_state[sentence] = results[i]
-				#self.sentence_to_state[sentence] = self.get_corenlp_sentiment(sentence)
+				self.sentence_to_sentiment[sentence] = results[i]
 		print("TIMEIT - {:2f}".format(time.time() - start))
+
+
+	def init_sentence_to_state(self):
+		self.init_sentence_to_sentiment()
+		self.sentence_to_state = {}
+		for sentence in self.sentence_to_sentiment:
+			self.sentence_to_state[sentence] = tuple([round(x, 1) for x in self.sentence_to_sentiment[sentence]])
+
 
 	def get_corenlp_sentiment(self, sentence):
 		decmark_reg = re.compile('(?<=\d),(?=\d)')
@@ -66,8 +71,9 @@ class QLearner:
                                                   properties=self.story_teller.props)))
 		sentiment_distribution = annotation["sentences"][0][
 		        "sentimentDistribution"]
-		sentiment_distribution = [round(x, 1) for x in sentiment_distribution]
+		# sentiment_distribution = [round(x, 1) for x in sentiment_distribution]
 		return tuple(sentiment_distribution)
+
 
 	def learn_transitions(self):
 		self.transition_table = {}
@@ -89,10 +95,12 @@ class QLearner:
                             {sentence: occurences/num_next_states \
                             for (sentence, occurences) in counter.most_common()}
 
+
 	def choose_action(self, state):
 		if random.uniform(0.0, 1.0) < self.epsilon:
 			return self.best_action(state)
 		return random.choice(self.story_teller.gesture_list)
+
 
 	def best_action(self, state):
 		if state not in self.state_action_table or \
@@ -103,12 +111,14 @@ class QLearner:
 		gesture = gesture[0]
 		return gesture
 
+
 	def error(self, state, gesture):
 		gesture_distribution = self.story_teller.gesture_to_probability[gesture]
 		squared_errors = [
 		        (x - y)**2 for (x, y) in zip(state, gesture_distribution)
 		]
 		return sum(squared_errors)
+
 
 	def reward(self, state, gesture):
 		gesture_distribution = self.story_teller.gesture_to_probability[gesture]
@@ -119,12 +129,13 @@ class QLearner:
 		cos = dot / (norma * normb)
 		return cos
 
+
 	def train(self):
 		start = time.time()
 		test_qualities = []
-		test_losses = []
 		train_qualities = []
-		train_losses = []
+		baseline_qualities = []
+		
 		best_qual = 0.0
 		best_state_action_table = {}
 		learning_rate_step = (self.start_learning_rate -
@@ -139,15 +150,14 @@ class QLearner:
 			self.epsilon += epsilon_rate_step
 			random.shuffle(self.training_set)
 			for story in self.training_set:
-				test_quality, test_error = self.test("test")
-				train_quality, train_error = self.test("train")
+				test_quality = self.test("test")
+				train_quality = self.test("train")
+				baseline_quality = self.test_random()
 				
 				test_qualities.append(test_quality)
-				test_losses.append(test_error)
-
+				baseline_qualities.append(baseline_quality)
 				train_qualities.append(train_quality)
-				train_losses.append(train_error)
-				
+
 				if test_quality > best_qual:
 					best_qual = test_quality
 					best_state_action_table = self.state_action_table.copy()
@@ -173,18 +183,19 @@ class QLearner:
 					        gesture, 0.0)
 
 					self.state_action_table[state][gesture] = \
-                                                        current_utility + \
-                                                        self.learning_rate * \
-                                                         (reward + self.decay * next_utility + penalty - current_utility)
+                                current_utility + \
+                                self.learning_rate * \
+                                 (reward + self.decay * next_utility +  \
+                                 	penalty - current_utility)
 			epoch += 1
 
 		print("Done training")
 		print("----> Best quality: {:4f}".format(best_qual))
-		return train_qualities, train_losses, test_qualities, test_losses, best_state_action_table
+		return train_qualities, test_qualities, baseline_qualities, best_state_action_table
 
 
 	def test(self, select_set):
-		error = 0.0
+		#error = 0.0
 		quality = 0.0
 		num_sen = 0
 		selected_set = None
@@ -197,17 +208,32 @@ class QLearner:
 			for sentence in story["story"]:
 				state = self.sentence_to_state[sentence]
 				gesture = self.best_action(state)
-				error += self.error(state, gesture)
-				quality += self.reward(state, gesture)
-		return quality / num_sen, error / num_sen
+				#error += self.error(state, gesture)
+				quality += self.reward(self.sentence_to_sentiment[sentence], gesture)
+		return quality / num_sen
 
-	def plot_data(self, train_data, test_data, title="Quality over time", mean=False):
+
+	def test_random(self):
+		quality = 0.0
+		num_sen = 0
+		for story in self.dataset:
+			num_sen += len(story["story"])
+			for sentence in story["story"]:
+				# call random gesture from the story teller.
+				# the number of the sentence will not be used so it does not matter.
+				gesture = self.story_teller.choose_gesture(0)
+				quality += self.reward(self.sentence_to_sentiment[sentence], gesture)
+		return quality / num_sen
+
+
+	def plot_data(self, train_data, test_data, baseline, title="Quality over time", mean=False):
 		fig, ax = plt.subplots(figsize=(10, 7))
 		ax.set_title(title)
 
 		x_data = range(len(train_data))
 		ax.plot(x_data, train_data, label="Training set")
 		ax.plot(x_data, test_data, label="Testing set")
+		ax.plot(x_data, baseline, label="Baseline")
 		for xc in range(0, len(x_data), len(self.training_set)):
 			plt.axvline(x=xc, linewidth=1, color='grey')
 		plt.xlabel("Stories")
@@ -215,12 +241,9 @@ class QLearner:
 		ax.legend(loc='upper right')
 		
 		axes = fig.gca()
-		#axes.set_xlim([None, len(train_data) * 1])
 		axes.set_ylim([0, 1])
-		
-
-
 		fig.savefig("{}.png".format(title))
+
 
 	def main(self):
 		total_q_train = []
@@ -228,24 +251,23 @@ class QLearner:
 		for indx in range(1):
 			print("-" * 10)
 			self.state_action_table = {}
-			train_qualities, train_losses, test_qualities, test_losses, best_policy = self.train()
-			title = "best_policy_run{}.json".format(indx)
-			quality_title = "quality_run{}".format(indx)
-			loss_title = "loss_run{}".format(indx)
-			with open(title, "w") as file:
-				best_policy = {
-				        str(state): best_action(state, best_policy)
-				        for state in best_policy
-				}
-				json.dump(best_policy, file)
-			self.plot_data(train_qualities, test_qualities, title=quality_title)
-			self.plot_data(train_losses, test_losses, title=loss_title)
-			total_q_train.append(train_qualities)
-			total_q_test.append(test_qualities)
-		with open("Quality_Total_Train_json", "w") as file:
-			json.dump(total_q_train,file)
-		with open("Loss_Total_Test_json", "w") as file:
-			json.dump(total_q_test,file)
+			train_qualities, test_qualities, baseline_qualities, best_policy = self.train()
+			# title = "best_policy_run{}.json".format(indx)
+			# quality_title = "quality_run{}".format(indx)
+			# loss_title = "loss_run{}".format(indx)
+			# with open(title, "w") as file:
+			# 	best_policy = {
+			# 	        str(state): best_action(state, best_policy)
+			# 	        for state in best_policy
+			# 	}
+			# 	json.dump(best_policy, file)
+			self.plot_data(train_qualities, test_qualities, baseline_qualities)
+			#total_q_train.append(train_qualities)
+			#total_q_test.append(test_qualities)
+		# with open("Quality_Total_Train_json", "w") as file:
+		# 	json.dump(total_q_train,file)
+		# with open("Loss_Total_Test_json", "w") as file:
+		# 	json.dump(total_q_test,file)
 
 
 def best_action(state, state_action_table):

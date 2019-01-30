@@ -21,11 +21,10 @@ class StoryTeller:
 	    return ALProxy(name, self.ip, self.port)
 
 	def __init__(self):
-		#self.init_stories()
-		#self.init_gestures()
+		self.init_gestures()
 		#self.init_gesture_handler()
-		#self.init_sentiment_analysis_client()
-		return
+		self.init_sentiment_analysis_client()
+
 
 	def init_robot_connection(self):
 		self.ip = "169.254.156.88"
@@ -37,51 +36,6 @@ class StoryTeller:
 	
 
 	def init_stories(self):
-		self.story = \
-			'\\bound=S\\ \\vol=80\\ \\vct=100\\ \\rspd=80\\' \
-			'The little mouse. '\
-			'Once upon a time, there was a Baby Mouse and Mother Mouse. '\
-			'They lived in a hole in the skirting board in a big, warm house '\
-			'with lots of cheese to eat, where they wanted for nothing. '\
-			'Then, one day, Mother Mouse decided to take Baby Mouse outside of their home. '\
-			'Waiting outside for them was a huge ginger tomcat, licking its lips '\
-			'and waiting to eat them both up. '\
-			'"Mother, Mother! What should we do?" Cried Baby Mouse, clinging to his mother\'s tail. '\
-			'Mother Mouse paused, staring up into the beady eyes of the hungry cat. '\
-			'But she wasn\'t scared because she knew exactly how to deal with big, scary cats. '\
-			'She opened her mouth and took in a deep breath. '\
-			'"Woof! Woof! Bark bark bark!" She shouted, and the cat ran away as fast as he could.'\
-			'"Wow, Mother! That was amazing!" Baby Mouse said to his mother, smiling happily.'\
-			'"And that, my child, is why it is always best to have a second language." '\
-			'\n	Moral: It\'s always good to have a second language.'
-		
-		# Split the text into sentences using a regular expression that matches 
-		# combinations of the delimiters '"' and '.'.
-		# The combinations are contained in a capture group because they will be
-		# used to reconstruct the original text after adding the bookmarks. 
-		self.sentences = re.split("((?:[\\.\"]+\\s*)+)", self.story)
-
-		# Filter out the empty sentences [optional].
-		self.sentences = filter(None, self.sentences)
-
-		# Add a bookmark to every delimiter, by changing every string at an odd
-		# index in the list. 
-		# The first sentence should not have any gesture and the indexes for
-		# the senteces and gestures should match. Thus, the indexes for gestures 
-		# will start from 1. 
-		new_story = [self.sentences[i] if i%2 == 0 else \
-					 self.sentences[i] + " \\mrk=" + str(i/2 + 1) + "\\ "  \
-					 for i in range(len(self.sentences))]
-		# Reconstruct the story.
-		self.story = "".join(new_story)
-
-		# Filter out the delimeters from the sentences list.
-		self.sentences = self.sentences[0::2]
-		#print(self.story)
-		#print(self.sentences)
-	
-
-	def init_story(self):
 		with open("aesopFables.json") as file:
 			dataset = json.load(file)["stories"]
 		self.story = dataset[44]
@@ -89,8 +43,6 @@ class StoryTeller:
 		processed_story = [" \\mrk=" + str(i + 1) + "\\ " + str(self.sentences[i]) \
 					 for i in range(len(self.sentences))]
 		
-		# Reconstruct the story.
-		# "\\bound=S\\ \\vol=80\\ \\vct=100\\ \\rspd=85\\" + \
 		self.story["story"] = "\\rspd=85\\" + \
 							  "".join(processed_story)
 
@@ -107,6 +59,7 @@ class StoryTeller:
 		sentiment_distribution = annotation["sentences"][0]["sentimentDistribution"]
 		return sentiment_distribution
 	
+
 	def init_sentence_to_sentiment(self):
 		self.sentences_sentiment_distribution = \
 			[self.get_corenlp_sentiment(sentence) for sentence in self.sentences]
@@ -258,7 +211,7 @@ class StoryTeller:
 		gesture = self.gesture_to_probability.keys()[gesture_index]
 		return gesture
 
-	def choose_policy_gesture(self, sentence_index):
+	def choose_policy_gesture(self, _):
 		# TODO move to utils
 		sentence = self.sentences[sentence_index]
 		state = self.get_corenlp_sentiment(sentence)
@@ -281,7 +234,7 @@ class StoryTeller:
 
 	def main(self):
 		self.init_robot_connection()
-		self.init_story()
+		self.init_stories()
 		self.init_policy()
 
 		self.quality_sum = 0.0
@@ -310,6 +263,7 @@ class StoryTeller:
 
 		self.error_sum = self.error_sum / (len(self.sentences))
 		return self.error_sum
+
 
 	def try_leds(self):
 		self.init_robot_connection()
