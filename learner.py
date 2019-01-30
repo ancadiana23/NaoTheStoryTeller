@@ -104,7 +104,7 @@ class QLearner:
 
 	def best_action(self, state):
 		if state not in self.state_action_table or \
-                                       not self.state_action_table[state]:
+             not self.state_action_table[state]:
 			return random.choice(self.story_teller.gesture_list)
 		gesture = max(self.state_action_table[state].items(), \
                                                key=lambda (x, y): y)
@@ -168,9 +168,9 @@ class QLearner:
 						self.state_action_table[state] = {}
 					gesture = self.choose_action(state)
 
-					reward = self.reward(state, gesture)
+					reward = self.reward(state, gesture) * 2.0
 					next_utility = 0.0
-					penalty = 0.0
+					repeat_gesture_penalty = 0.0
 					if i != len(story["story"]) - 1:
 						next_state = self.sentence_to_state[story["story"][i +
 						                                                   1]]
@@ -178,16 +178,17 @@ class QLearner:
 						next_utility = self.state_action_table.get(
 						        next_state, {}).get(next_action, 0.0)
 						if next_action == gesture:
-							penalty = -3.0
+							repeat_gesture_penalty = -3.0
 					current_utility = self.state_action_table[state].get(
 					        gesture, 0.0)
 
+					gesture_distribution = self.story_teller.gesture_to_probability[gesture]
+					expressivity_reward = (gesture_distribution[0] + gesture_distribution[4]) * 2.0
 					self.state_action_table[state][gesture] = \
                                 current_utility + \
                                 self.learning_rate * \
                                  (reward + self.decay * next_utility +  \
-                                 	penalty - current_utility)
-			epoch += 1
+                                 	repeat_gesture_penalty + expressivity_reward - current_utility)
 
 		print("Done training")
 		print("----> Best quality: {:4f}".format(best_qual))
@@ -195,7 +196,7 @@ class QLearner:
 
 
 	def test(self, select_set):
-		#error = 0.0
+		# error = 0.0
 		quality = 0.0
 		num_sen = 0
 		selected_set = None
@@ -252,15 +253,15 @@ class QLearner:
 			print("-" * 10)
 			self.state_action_table = {}
 			train_qualities, test_qualities, baseline_qualities, best_policy = self.train()
-			# title = "best_policy_run{}.json".format(indx)
+			title = "best_policy_run{}.json".format(indx)
 			# quality_title = "quality_run{}".format(indx)
 			# loss_title = "loss_run{}".format(indx)
-			# with open(title, "w") as file:
-			# 	best_policy = {
-			# 	        str(state): best_action(state, best_policy)
-			# 	        for state in best_policy
-			# 	}
-			# 	json.dump(best_policy, file)
+			with open(title, "w") as file:
+				best_policy = {
+				        str(state): best_action(state, best_policy)
+				        for state in best_policy
+				}
+				json.dump(best_policy, file)
 			self.plot_data(train_qualities, test_qualities, baseline_qualities)
 			#total_q_train.append(train_qualities)
 			#total_q_test.append(test_qualities)
