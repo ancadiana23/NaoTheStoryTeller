@@ -24,9 +24,11 @@ class StoryTeller:
 
 	def __init__(self):
 		self.init_gestures()
+		self.init_leds_gestures()
+		#self.init_gesture_handler()
 		self.init_sentiment_analysis_client()
-		self.init_gesture_list()
-		self.init_robot_connection()
+		#self.init_gesture_list()
+		#self.init_robot_connection()
 
 	def init_robot_connection(self):
 		self.ip = "169.254.177.0"
@@ -54,21 +56,21 @@ class StoryTeller:
 
 	def get_corenlp_sentiment(self, sentence):
 		annotation = json.loads(self.nlp.annotate(sentence, \
-                                                              properties=self.props))
+                                                                    properties=self.props))
 		sentiment_distribution = annotation["sentences"][0][
 		        "sentimentDistribution"]
 		return sentiment_distribution
 
 	def init_sentence_to_sentiment(self):
 		self.sentences_sentiment_distribution = \
-                                                         [self.get_corenlp_sentiment(sentence) for sentence in self.sentences]
+                                                               [self.get_corenlp_sentiment(sentence) for sentence in self.sentences]
 
 	def init_gesture_list(self):
 		self.gesture_list = list(self.gesture_to_probability.keys())
 
 	def init_gestures(self):
 		self.gesture_to_probability = \
-                                                        {'animations/Stand/Emotions/Negative/Fearful_1': [0.718, 0.138, 0.048, 0.048, 0.048],
+                                                              {'animations/Stand/Emotions/Negative/Fearful_1': [0.718, 0.138, 0.048, 0.048, 0.048],
 		 'animations/Stand/BodyTalk/Speaking/BodyTalk_18': [0.25, 0.3, 0.25, 0.1, 0.1],
 		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01': [0.05, 0.2, 0.5, 0.2, 0.05],
 		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03': [0.05, 0.05, 0.2, 0.5, 0.2],
@@ -138,7 +140,19 @@ class StoryTeller:
 		                 [0.623529, 0.592156, 0.466666], [0.0, 0.0, 0.0],
 		                 [0.0, 0.0, 0.0], [0.623529, 0.592156, 0.466666],
 		                 [0.623529, 0.592156, 0.466666],
-		                 [0.623529, 0.592156, 0.466666], [0.0, 0.0, 0.0]]
+		                 [0.623529, 0.592156, 0.466666], [0.0, 0.0, 0.0]],
+		        "neutral": [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0],
+		                    [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0],
+		                    [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
+		}
+		self.leds_to_emotion = {
+		        "anger": [1,0.5],
+		        "surprise": [3,0.7],
+		        "disgust": [1,0.6],
+		        "sadness": [0,0.5],
+		        "happiness": [4,0.7],
+		        "fear": [1,0.6],
+				"neutral" : [2,0.3]
 		}
 
 	def init_gesture_handler(self):
