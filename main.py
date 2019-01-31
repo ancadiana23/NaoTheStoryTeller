@@ -31,7 +31,7 @@ class StoryTeller:
 		#self.init_robot_connection()
 
 	def init_robot_connection(self):
-		self.ip = "169.254.30.87"
+		self.ip = "169.254.218.6"
 		self.port = 9559
 		self.tts = self.get_session(TTSAPI)
 		self.memory = self.get_session("ALMemory")
@@ -39,16 +39,22 @@ class StoryTeller:
 		self.anim = self.get_session("ALAnimationPlayer")
 		self.facetrack = self.get_session("ALBasicAwareness")
 		self.blinking = self.get_session("ALAutonomousBlinking")
-		self.blinking.setEnabled(True)
-		if self.facetrack.isEnabled():
-			print("disable tracking")
-			self.facetrack.setEnabled(False)
-			self.facetrack.pauseAwareness()
+		#self.posture = self.get_session("ALRobotPosture")
+		self.motion = self.get_session("ALMotion")
+		self.blinking.setEnabled(False)
+		self.facetrack.setEnabled(True)
+		self.facetrack.resumeAwareness()
+		# 	self.facetrack.pauseAwareness()
+		# if self.facetrack.isEnabled():
+		# 	print("disable tracking")
+		# 	self.facetrack.setEnabled(False)
+		# 	self.facetrack.pauseAwareness()
+
 
 	def init_stories(self):
 		with open("aesopFables.json") as file:
 			dataset = json.load(file)["stories"]
-		self.story = dataset[20]
+		self.story = dataset[38]
 		self.sentences = self.story["story"]
 		processed_story = [" \\mrk=" + str(i + 2) + "\\ " + str(self.sentences[i]) \
                                     for i in range(len(self.sentences))]
@@ -325,6 +331,7 @@ class StoryTeller:
 		        "ALTextToSpeech/CurrentBookMark")
 		self.sub.signal.connect(self.bookmark_handler)
 
+
 	def init_sentiment_analysis_client(self):
 		self.nlp = StanfordCoreNLP('http://localhost', port=9000, timeout=30000)
 		self.props = {
@@ -470,18 +477,21 @@ class StoryTeller:
 			gesture = self.choose_policy_gesture(index)
 			led = self.choose_policy_led(index)
 		self.change_eyes(led, gesture)
-		self.memory_service.raiseEvent("eyechange", (led, gesture))
+		#self.memory_service.raiseEvent("eyechange", (led, gesture))
 		self.anim.run(gesture)
-		#print(led)
+		#self.posture.goToPosture("Stand", 1.0)
+		#self.motion.angleInterpolation(["HeadYaw", "HeadPitch"], [0.0, 0.0], [1.0, 1.0], True)
 		
 		quality = self.quality_function(self.sentences[index], gesture)
 		self.quality_sum += quality
+
 
 	def eye_change_handler(self, data):
 		emotion, gesture = data
 		print(emotion)
 		print(gesture)
 		#self.change_eyes(emotion, gesture)
+
 
 	def change_eyes(self, emotion, gesture):
 		print(gesture, " - ", self.led_gestures[gesture])
@@ -531,29 +541,6 @@ class StoryTeller:
 		self.error_sum = self.error_sum / (len(self.sentences))
 		return self.error_sum
 
-	def try_leds(self):
-		self.init_robot_connection()
-		# up
-		#self.leds.fadeRGB("FaceLed0", 1.0, 0.0, 0.0, 2)
-		#self.leds.fadeRGB("FaceLed1", 0.0, 1.0, 0.0, 2)
-		# inner corner
-		#self.leds.fadeRGB("FaceLed2", 0.0, 0.0, 1.0, 2)
-		#self.leds.fadeRGB("FaceLed3", 1.0, 1.0, 0.0, 2)
-		# down
-		#self.leds.fadeRGB("FaceLed4", 1.0, 0.0, 1.0, 2)
-		#self.leds.fadeRGB("FaceLed5", 0.0, 1.0, 1.0, 2)
-		# outer corner
-		#self.leds.fadeRGB("FaceLed6", 1.0, 1.0, 1.0, 2)
-		#self.leds.fadeRGB("FaceLed7", 0.0, 0.0, 0.0, 2)
-		#print(self.leds.listGroup("FaceLeds"))
-		#print(self.leds.listLEDs())
-		self.leds.fadeRGB("FaceLed7", 1.0, 0.0, 0.0, 2)
-		print(self.leds.getIntensity("RightFaceLed1"))
-		#print(self.leds.getIntensity("RightFaceLed2"))
-		#print(self.leds.getIntensity("RightFaceLed3"))
-		#print(self.leds.getIntensity("RightFaceLed4"))
-		self.leds.reset("FaceLed7")
-
 
 def run_simulations(story_teller):
 	num_simulations = 50
@@ -587,19 +574,3 @@ if __name__ == "__main__":
 	story_teller.main()
 	#run_simulations(story_teller)
 	#story_teller.try_leds()
-"""
-	d = {}
-	ledname = "RightFaceLed",
-	for gesture in story_teller.gesture_list:
-		story_teller.anim.run(gesture)
-		time.sleep(2)
-		l = []
-		for i in range(1,9):
-			intens = story_teller.leds.getIntensity("RightFaceLed{}".format(i))
-			story_teller.leds.reset("RightFaceLed{}".format(i))
-			l.append(intens)		
-		d[gesture] = l
-	with open("LEDS.json", "w") as output_file:
-		print(d)
-		json.dump(d,output_file)
-"""
