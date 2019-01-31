@@ -31,12 +31,19 @@ class StoryTeller:
 		#self.init_robot_connection()
 
 	def init_robot_connection(self):
-		self.ip = "169.254.141.11"
+		self.ip = "169.254.30.87"
 		self.port = 9559
 		self.tts = self.get_session(TTSAPI)
 		self.memory = self.get_session("ALMemory")
 		self.leds = self.get_session("ALLeds")
 		self.anim = self.get_session("ALAnimationPlayer")
+		self.facetrack = self.get_session("ALBasicAwareness")
+		self.blinking = self.get_session("ALAutonomousBlinking")
+		self.blinking.setEnabled(True)
+		if self.facetrack.isEnabled():
+			print("disable tracking")
+			self.facetrack.setEnabled(False)
+			self.facetrack.pauseAwareness()
 
 	def init_stories(self):
 		with open("aesopFables.json") as file:
@@ -44,10 +51,10 @@ class StoryTeller:
 		self.story = dataset[20]
 		self.sentences = self.story["story"]
 		processed_story = [" \\mrk=" + str(i + 2) + "\\ " + str(self.sentences[i]) \
-            for i in range(len(self.sentences))]
+                                    for i in range(len(self.sentences))]
 
-		self.story["story"] = "\\rspd=85\\" + \
-               "".join(processed_story)
+		self.story["story"] = "\\rspd=80\\" + \
+                                       "".join(processed_story)
 
 	def init_policy(self):
 		with open("best_policy_run0.json") as file:
@@ -60,62 +67,214 @@ class StoryTeller:
 		self.led_policy = {make_tuple(x): str(y) for (x, y) in policy.items()}
 
 	def get_corenlp_sentiment(self, sentence):
-		annotation = json.loads(self.nlp.annotate(sentence, \
-                                                                          properties=self.props))
+		decmark_reg = re.compile('(?<=\d),(?=\d)')
+		annotation = json.loads(
+		        decmark_reg.sub(
+		                '.', self.nlp.annotate(sentence,
+		                                       properties=self.props)))
 		sentiment_distribution = annotation["sentences"][0][
 		        "sentimentDistribution"]
 		return sentiment_distribution
 
 	def init_sentence_to_sentiment(self):
-		self.sentences_sentiment_distribution = \
-                                                                     [self.get_corenlp_sentiment(sentence) for sentence in self.sentences]
+		self.sentences_sentiment_distribution = [self.get_corenlp_sentiment(sentence) for sentence in self.sentences]
 
 	def init_gesture_list(self):
 		self.gesture_list = list(self.gesture_to_probability.keys())
 
 	def init_gestures(self):
-		self.gesture_to_probability = \
-                                                                    {'animations/Stand/Emotions/Negative/Fearful_1': [0.718, 0.138, 0.048, 0.048, 0.048],
-		 'animations/Stand/BodyTalk/Speaking/BodyTalk_18': [0.25, 0.3, 0.25, 0.1, 0.1],
-		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01': [0.05, 0.2, 0.5, 0.2, 0.05],
-		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03': [0.05, 0.05, 0.2, 0.5, 0.2],
-		 'animations/Stand/BodyTalk/Speaking/BodyTalk_11': [0.05, 0.2, 0.5, 0.2, 0.05],
-		 'animations/Stand/BodyTalk/Speaking/BodyTalk_17': [0.03, 0.12, 0.7, 0.12, 0.03],
-		 'animations/Stand/Emotions/Positive/Proud_2': [0.048, 0.048, 0.048, 0.138, 0.718],
-		 'animations/Stand/Emotions/Positive/Confident_1': [0.08, 0.08, 0.08, 0.23, 0.53],
-		 'animations/Stand/Exclamation/NAO/Center_Neutral_EXC_01': [0.1, 0.1, 0.25, 0.3, 0.25],
-		 'animations/Stand/Exclamation/NAO/Right_Strong_EXC_04': [0.048, 0.048, 0.048, 0.138, 0.718],
-		 'animations/Stand/BodyTalk/Speaking/BodyTalk_5': [0.05, 0.05, 0.2, 0.5, 0.2],
-		 'animations/Stand/BodyTalk/Speaking/BodyTalk_4': [0.03, 0.12, 0.7, 0.12, 0.03],
-		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_05': [0.53, 0.23, 0.08, 0.08, 0.08],
-		 'animations/Stand/Self & others/NAO/Center_Neutral_SAO_03': [0.1, 0.25, 0.3, 0.25, 0.1],
-		 'animations/Stand/Gestures/Explain_4': [0.1, 0.25, 0.3, 0.25, 0.1],
-		 'animations/Stand/Gestures/Explain_1': [0.1, 0.25, 0.3, 0.25, 0.1],
-		 'animations/Stand/Emotions/Positive/Happy_4': [0.048, 0.048, 0.048, 0.138, 0.718],
-		 'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_01': [0.05, 0.2, 0.5, 0.2, 0.05],
-		 'animations/Stand/Gestures/Explain_9': [0.05, 0.2, 0.5, 0.2, 0.05],
-		 'animations/Stand/Gestures/Explain_8': [0.05, 0.2, 0.5, 0.2, 0.05],
-		 'animations/Stand/Negation/NAO/Center_Strong_NEG_01': [0.08, 0.08, 0.08, 0.23, 0.53],
-		 'animations/Stand/Negation/NAO/Center_Strong_NEG_05': [0.53, 0.23, 0.08, 0.08, 0.08],
-		 'animations/Stand/Self & others/NAO/Left_Neutral_SAO_01': [0.05, 0.2, 0.5, 0.2, 0.05],
-		 'animations/Stand/Self & others/NAO/Left_Neutral_SAO_02': [0.05, 0.05, 0.2, 0.5, 0.2],
-		 'animations/Stand/Self & others/NAO/Left_Strong_SAO_02': [0.05, 0.05, 0.2, 0.5, 0.2],
-		 'animations/Stand/Space & time/NAO/Right_Slow_SAT_01': [0.05, 0.05, 0.2, 0.5, 0.2],
-		 'animations/Stand/Exclamation/NAO/Left_Strong_EXC_03': [0.048, 0.048, 0.048, 0.138, 0.718],
-		 'animations/Stand/Gestures/Desperate_5': [0.53, 0.23, 0.08, 0.08, 0.08],
-		 'animations/Stand/Gestures/Desperate_2': [0.2, 0.5, 0.2, 0.05, 0.05],
-		 'animations/Stand/Emotions/Positive/Excited_1': [0.048, 0.048, 0.048, 0.138, 0.718],
-		 'animations/Stand/Gestures/You_3': [0.05, 0.2, 0.5, 0.2, 0.05],
-		 'animations/Stand/Emotions/Negative/Disappointed_1': [0.718, 0.138, 0.048, 0.048, 0.048],
-		 'animations/Stand/Negation/NAO/Right_Strong_NEG_01': [0.2, 0.5, 0.2, 0.05, 0.05],
-		 'animations/Stand/Emotions/Negative/Frustrated_1': [0.53, 0.23, 0.08, 0.08, 0.08],
-		 'animations/Stand/Gestures/Explain_3': [0.05, 0.2, 0.5, 0.2, 0.05],
-		 'animations/Stand/BodyTalk/Speaking/BodyTalk_2': [0.1, 0.25, 0.3, 0.25, 0.1],
-		 'animations/Stand/Gestures/Desperate_1': [0.718, 0.138, 0.048, 0.048, 0.048],
-		 'animations/Stand/Emotions/Positive/Sure_1': [0.2, 0.5, 0.2, 0.05, 0.05]}
+		self.gesture_to_probability = {
+		        'animations/Stand/Emotions/Negative/Fearful_1': [
+		                0.718, 0.138, 0.048, 0.048, 0.048
+		        ],
+		        'animations/Stand/BodyTalk/Speaking/BodyTalk_18': [
+		                0.25, 0.3, 0.25, 0.1, 0.1
+		        ],
+		        'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01':
+		                [0.05, 0.2, 0.5, 0.2, 0.05],
+		        'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03':
+		                [0.05, 0.05, 0.2, 0.5, 0.2],
+		        'animations/Stand/BodyTalk/Speaking/BodyTalk_11': [
+		                0.05, 0.2, 0.5, 0.2, 0.05
+		        ],
+		        'animations/Stand/BodyTalk/Speaking/BodyTalk_17': [
+		                0.03, 0.12, 0.7, 0.12, 0.03
+		        ],
+		        'animations/Stand/Emotions/Positive/Proud_2': [
+		                0.048, 0.048, 0.048, 0.138, 0.718
+		        ],
+		        'animations/Stand/Emotions/Positive/Confident_1': [
+		                0.08, 0.08, 0.08, 0.23, 0.53
+		        ],
+		        'animations/Stand/Exclamation/NAO/Center_Neutral_EXC_01': [
+		                0.1, 0.1, 0.25, 0.3, 0.25
+		        ],
+		        'animations/Stand/Exclamation/NAO/Right_Strong_EXC_04': [
+		                0.048, 0.048, 0.048, 0.138, 0.718
+		        ],
+		        'animations/Stand/BodyTalk/Speaking/BodyTalk_5': [
+		                0.05, 0.05, 0.2, 0.5, 0.2
+		        ],
+		        'animations/Stand/BodyTalk/Speaking/BodyTalk_4': [
+		                0.03, 0.12, 0.7, 0.12, 0.03
+		        ],
+		        'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_05':
+		                [0.53, 0.23, 0.08, 0.08, 0.08],
+		        'animations/Stand/Self & others/NAO/Center_Neutral_SAO_03': [
+		                0.1, 0.25, 0.3, 0.25, 0.1
+		        ],
+		        'animations/Stand/Gestures/Explain_4': [
+		                0.1, 0.25, 0.3, 0.25, 0.1
+		        ],
+		        'animations/Stand/Gestures/Explain_1': [
+		                0.1, 0.25, 0.3, 0.25, 0.1
+		        ],
+		        'animations/Stand/Emotions/Positive/Happy_4': [
+		                0.048, 0.048, 0.048, 0.138, 0.718
+		        ],
+		        'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_01':
+		                [0.05, 0.2, 0.5, 0.2, 0.05],
+		        'animations/Stand/Gestures/Explain_9': [
+		                0.05, 0.2, 0.5, 0.2, 0.05
+		        ],
+		        'animations/Stand/Gestures/Explain_8': [
+		                0.05, 0.2, 0.5, 0.2, 0.05
+		        ],
+		        'animations/Stand/Negation/NAO/Center_Strong_NEG_01': [
+		                0.08, 0.08, 0.08, 0.23, 0.53
+		        ],
+		        'animations/Stand/Negation/NAO/Center_Strong_NEG_05': [
+		                0.53, 0.23, 0.08, 0.08, 0.08
+		        ],
+		        'animations/Stand/Self & others/NAO/Left_Neutral_SAO_01': [
+		                0.05, 0.2, 0.5, 0.2, 0.05
+		        ],
+		        'animations/Stand/Self & others/NAO/Left_Neutral_SAO_02': [
+		                0.05, 0.05, 0.2, 0.5, 0.2
+		        ],
+		        'animations/Stand/Self & others/NAO/Left_Strong_SAO_02': [
+		                0.05, 0.05, 0.2, 0.5, 0.2
+		        ],
+		        'animations/Stand/Space & time/NAO/Right_Slow_SAT_01': [
+		                0.05, 0.05, 0.2, 0.5, 0.2
+		        ],
+		        'animations/Stand/Exclamation/NAO/Left_Strong_EXC_03': [
+		                0.048, 0.048, 0.048, 0.138, 0.718
+		        ],
+		        'animations/Stand/Gestures/Desperate_5': [
+		                0.53, 0.23, 0.08, 0.08, 0.08
+		        ],
+		        'animations/Stand/Gestures/Desperate_2': [
+		                0.2, 0.5, 0.2, 0.05, 0.05
+		        ],
+		        'animations/Stand/Emotions/Positive/Excited_1': [
+		                0.048, 0.048, 0.048, 0.138, 0.718
+		        ],
+		        'animations/Stand/Gestures/You_3': [0.05, 0.2, 0.5, 0.2, 0.05],
+		        'animations/Stand/Emotions/Negative/Disappointed_1': [
+		                0.718, 0.138, 0.048, 0.048, 0.048
+		        ],
+		        'animations/Stand/Negation/NAO/Right_Strong_NEG_01': [
+		                0.2, 0.5, 0.2, 0.05, 0.05
+		        ],
+		        'animations/Stand/Emotions/Negative/Frustrated_1': [
+		                0.53, 0.23, 0.08, 0.08, 0.08
+		        ],
+		        'animations/Stand/Gestures/Explain_3': [
+		                0.05, 0.2, 0.5, 0.2, 0.05
+		        ],
+		        'animations/Stand/BodyTalk/Speaking/BodyTalk_2': [
+		                0.1, 0.25, 0.3, 0.25, 0.1
+		        ],
+		        'animations/Stand/Gestures/Desperate_1': [
+		                0.718, 0.138, 0.048, 0.048, 0.048
+		        ],
+		        'animations/Stand/Emotions/Positive/Sure_1': [
+		                0.2, 0.5, 0.2, 0.05, 0.05
+		        ]
+		}
+
+		self.led_gestures = {
+		        'animations/Stand/Emotions/Negative/Fearful_1':
+		                True,
+		        'animations/Stand/BodyTalk/Speaking/BodyTalk_18':
+		                False,
+		        'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_01':
+		                False,
+		        'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03':
+		                False,
+		        'animations/Stand/BodyTalk/Speaking/BodyTalk_11':
+		                False,
+		        'animations/Stand/BodyTalk/Speaking/BodyTalk_17':
+		                False,
+		        'animations/Stand/Emotions/Positive/Proud_2':
+		                True,
+		        'animations/Stand/Emotions/Positive/Confident_1':
+		                True,
+		        'animations/Stand/Exclamation/NAO/Center_Neutral_EXC_01':
+		                False,
+		        'animations/Stand/Exclamation/NAO/Right_Strong_EXC_04':
+		                False,
+		        'animations/Stand/BodyTalk/Speaking/BodyTalk_5':
+		                False,
+		        'animations/Stand/BodyTalk/Speaking/BodyTalk_4':
+		                False,
+		        'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_05':
+		                False,
+		        'animations/Stand/Self & others/NAO/Center_Neutral_SAO_03':
+		                False,
+		        'animations/Stand/Gestures/Explain_4':
+		                False,
+		        'animations/Stand/Gestures/Explain_1':
+		                False,
+		        'animations/Stand/Emotions/Positive/Happy_4':
+		                True,
+		        'animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Strong_AFF_01':
+		                False,
+		        'animations/Stand/Gestures/Explain_9':
+		                False,
+		        'animations/Stand/Gestures/Explain_8':
+		                False,
+		        'animations/Stand/Negation/NAO/Center_Strong_NEG_01':
+		                False,
+		        'animations/Stand/Negation/NAO/Center_Strong_NEG_05':
+		                False,
+		        'animations/Stand/Self & others/NAO/Left_Neutral_SAO_01':
+		                False,
+		        'animations/Stand/Self & others/NAO/Left_Neutral_SAO_02':
+		                False,
+		        'animations/Stand/Self & others/NAO/Left_Strong_SAO_02':
+		                False,
+		        'animations/Stand/Space & time/NAO/Right_Slow_SAT_01':
+		                False,
+		        'animations/Stand/Exclamation/NAO/Left_Strong_EXC_03':
+		                False,
+		        'animations/Stand/Gestures/Desperate_5':
+		                True,
+		        'animations/Stand/Gestures/Desperate_2':
+		                True,
+		        'animations/Stand/Emotions/Positive/Excited_1':
+		                True,
+		        'animations/Stand/Gestures/You_3':
+		                False,
+		        'animations/Stand/Emotions/Negative/Disappointed_1':
+		                True,
+		        'animations/Stand/Negation/NAO/Right_Strong_NEG_01':
+		                False,
+		        'animations/Stand/Emotions/Negative/Frustrated_1':
+		                True,
+		        'animations/Stand/Gestures/Explain_3':
+		                False,
+		        'animations/Stand/BodyTalk/Speaking/BodyTalk_2':
+		                False,
+		        'animations/Stand/Gestures/Desperate_1':
+		                True,
+		        'animations/Stand/Emotions/Positive/Sure_1':
+		                True
+		}
 
 		self.neutral_gestures = [x for x in self.gesture_to_probability \
-               if np.argmax(self.gesture_to_probability[x]) == 2]
+                                       if np.argmax(self.gesture_to_probability[x]) == 2]
 
 	def init_leds_gestures(self):
 		self.led_gesture = {
@@ -150,13 +309,13 @@ class StoryTeller:
 		                    [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
 		}
 		self.leds_to_emotion = {
-		        "anger": [1, 0.5],
-		        "surprise": [3, 0.7],
-		        "disgust": [1, 0.6],
-		        "sadness": [0, 0.5],
-		        "happiness": [4, 0.7],
-		        "fear": [1, 0.6],
-		        "neutral": [2, 0.3]
+		        "anger": [1, 0.3],
+		        "surprise": [3, 0.6],
+		        "disgust": [1, 0.4],
+		        "sadness": [0, 0.3],
+		        "happiness": [4, 0.6],
+		        "fear": [1, 0.4],
+		        "neutral": [2, 0.0]
 		}
 
 	def init_gesture_handler(self):
@@ -175,16 +334,22 @@ class StoryTeller:
 		}
 
 	def quality_function(self, sentence, gesture):
+		decmark_reg = re.compile('(?<=\d),(?=\d)')
 		annotation = json.loads(
-		        self.nlp.annotate(sentence, properties=self.props))
+		        decmark_reg.sub(
+		                '.', self.nlp.annotate(sentence,
+		                                       properties=self.props)))
 		sentiment_distribution = annotation["sentences"][0][
 		        "sentimentDistribution"]
 		indx = np.argmax(self.gesture_to_probability[gesture])
 		return sentiment_distribution[indx]
 
 	def error_function(self, sentence, gesture):
+		decmark_reg = re.compile('(?<=\d),(?=\d)')
 		annotation = json.loads(
-		        self.nlp.annotate(sentence, properties=self.props))
+		        decmark_reg.sub(
+		                '.', self.nlp.annotate(sentence,
+		                                       properties=self.props)))
 		sentiment_distribution = annotation["sentences"][0][
 		        "sentimentDistribution"]
 		gesture_distribution = self.gesture_to_probability[gesture]
@@ -291,7 +456,8 @@ class StoryTeller:
 		return choice(self.led_gesture)
 
 	def bookmark_handler(self, value):
-		self.reset_eyes()
+		#self.reset_eyes()
+		led = "neutral"
 		print("Value = ", value)
 		#gesture = self.choose_gesture()
 		#gesture = self.choose_best_gesture(int(value))
@@ -303,16 +469,28 @@ class StoryTeller:
 		else:
 			gesture = self.choose_policy_gesture(index)
 			led = self.choose_policy_led(index)
+		self.change_eyes(led, gesture)
+		self.memory_service.raiseEvent("eyechange", (led, gesture))
 		self.anim.run(gesture)
+		#print(led)
+		
 		quality = self.quality_function(self.sentences[index], gesture)
 		self.quality_sum += quality
-		
 
-	def change_eyes(self, emotion):
-		rgb_list = self.led_gesture[emotion]
-		for i in range(8):
-			rgb = rgb_list[i]
-			self.leds.fadeRGB("FaceLed{}".format(i), rgb[0], rgb[1], rgb[2], 1)
+	def eye_change_handler(self, data):
+		emotion, gesture = data
+		print(emotion)
+		print(gesture)
+		#self.change_eyes(emotion, gesture)
+
+	def change_eyes(self, emotion, gesture):
+		print(gesture, " - ", self.led_gestures[gesture])
+		if not self.led_gestures[gesture]:
+			rgb_list = self.led_gesture[emotion]
+			for i in range(8):
+				rgb = rgb_list[i]
+				self.leds.fadeRGB("FaceLed{}".format(i), rgb[2], rgb[1], rgb[0],
+				                  0.1)
 
 	def reset_eyes(self):
 		for i in range(8):
@@ -328,13 +506,15 @@ class StoryTeller:
 		self.quality_sum = 0.0
 		memory_service = self.memory.session().service("ALMemory")
 		self.sub = memory_service.subscriber("ALTextToSpeech/CurrentBookMark")
+		self.eyesub = memory_service.subscriber("eyechange")
 		self.sub.signal.connect(self.bookmark_handler)
+		self.eyesub.signal.connect(self.eye_change_handler)
 
 		#self.anim.run("animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03")
-		self.tts.say(" \\mrk=1\\ " + str(self.story["title"]))
+		self.tts.say(" \\rspd=85\\ \\mrk=1\\ " + str(self.story["title"]))
 		self.tts.say(str(self.story["story"]))
 		#self.anim.run("animations/Stand/BodyTalk/BodyLanguage/NAO/Center_Slow_AFF_03")
-		self.tts.say("Moral of the story: \\mrk=1\\ " +
+		self.tts.say("\\rspd=85\\ Moral of the story: \\mrk=1\\ " +
 		             str(self.story["moral"]))
 		self.quality_sum = self.quality_sum / len(self.sentences)
 		print(self.quality_sum)
