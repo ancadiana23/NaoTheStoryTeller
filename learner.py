@@ -69,14 +69,13 @@ class QLearner:
 			        [round(x, 1) for x in self.sentence_to_sentiment[sentence]])
 
 	def get_corenlp_sentiment(self, sentence):
-		decmark_reg = re.compile('(?<=\d),(?=\d)')
-		annotation = json.loads(decmark_reg.sub('.',self.story_teller.nlp.annotate(sentence, \
-                                                                          properties=self.story_teller.props)))
+		annotation = self.story_teller.get_annotation(sentence)
 		sentiment_distribution = annotation["sentences"][0][
 		        "sentimentDistribution"]
 		# sentiment_distribution = [round(x, 1) for x in sentiment_distribution]
 		return tuple(sentiment_distribution)
 
+	# ! Not used
 	def learn_transitions(self):
 		self.transition_table = {}
 

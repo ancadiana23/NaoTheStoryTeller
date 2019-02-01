@@ -72,11 +72,7 @@ class StoryTeller:
 		self.led_policy = {make_tuple(x): str(y) for (x, y) in policy.items()}
 
 	def get_corenlp_sentiment(self, sentence):
-		decmark_reg = re.compile('(?<=\d),(?=\d)')
-		annotation = json.loads(
-		        decmark_reg.sub(
-		                '.', self.nlp.annotate(sentence,
-		                                       properties=self.props)))
+		annotation = self.get_annotation(sentence)
 		sentiment_distribution = annotation["sentences"][0][
 		        "sentimentDistribution"]
 		return sentiment_distribution
@@ -340,24 +336,23 @@ class StoryTeller:
 		        'pipelineLanguage': 'en',
 		        'outputFormat': 'json'
 		}
-
-	def quality_function(self, sentence, gesture):
+	def get_annotation(self,sentence):
 		decmark_reg = re.compile('(?<=\d),(?=\d)')
 		annotation = json.loads(
 		        decmark_reg.sub(
 		                '.', self.nlp.annotate(sentence,
 		                                       properties=self.props)))
+		return annotation
+
+	def quality_function(self, sentence, gesture):
+		annotation = self.get_annotation(sentence)
 		sentiment_distribution = annotation["sentences"][0][
 		        "sentimentDistribution"]
 		indx = np.argmax(self.gesture_to_probability[gesture])
 		return sentiment_distribution[indx]
 
 	def error_function(self, sentence, gesture):
-		decmark_reg = re.compile('(?<=\d),(?=\d)')
-		annotation = json.loads(
-		        decmark_reg.sub(
-		                '.', self.nlp.annotate(sentence,
-		                                       properties=self.props)))
+		annotation = self.get_annotation(sentence)
 		sentiment_distribution = annotation["sentences"][0][
 		        "sentimentDistribution"]
 		gesture_distribution = self.gesture_to_probability[gesture]
@@ -438,7 +433,7 @@ class StoryTeller:
 		return gesture
 
 	def choose_policy_gesture(self, sentence_index):
-		# TODO move to utils
+		#TODO: move to utils
 		sentence = self.sentences[sentence_index]
 		state = self.get_corenlp_sentiment(sentence)
 		state = tuple([round(x, 1) for x in state])
@@ -451,7 +446,7 @@ class StoryTeller:
 		return choice(self.neutral_gestures)
 
 	def choose_policy_led(self, sentence_index):
-		# TODO move to utils
+		#TODO: move to utils
 		sentence = self.sentences[sentence_index]
 		state = self.get_corenlp_sentiment(sentence)
 		state = tuple([round(x, 1) for x in state])
