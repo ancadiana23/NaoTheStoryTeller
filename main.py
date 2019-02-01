@@ -50,17 +50,16 @@ class StoryTeller:
 		# 	self.facetrack.setEnabled(False)
 		# 	self.facetrack.pauseAwareness()
 
-
 	def init_stories(self):
 		with open("aesopFables.json") as file:
 			dataset = json.load(file)["stories"]
 		self.story = dataset[38]
 		self.sentences = self.story["story"]
 		processed_story = [" \\mrk=" + str(i + 2) + "\\ " + str(self.sentences[i]) \
-                                    for i in range(len(self.sentences))]
+                                                for i in range(len(self.sentences))]
 
 		self.story["story"] = "\\rspd=80\\" + \
-                                       "".join(processed_story)
+                                                   "".join(processed_story)
 
 	def init_policy(self):
 		with open("best_policy_run0.json") as file:
@@ -83,7 +82,10 @@ class StoryTeller:
 		return sentiment_distribution
 
 	def init_sentence_to_sentiment(self):
-		self.sentences_sentiment_distribution = [self.get_corenlp_sentiment(sentence) for sentence in self.sentences]
+		self.sentences_sentiment_distribution = [
+		        self.get_corenlp_sentiment(sentence)
+		        for sentence in self.sentences
+		]
 
 	def init_gesture_list(self):
 		self.gesture_list = list(self.gesture_to_probability.keys())
@@ -280,7 +282,7 @@ class StoryTeller:
 		}
 
 		self.neutral_gestures = [x for x in self.gesture_to_probability \
-                                       if np.argmax(self.gesture_to_probability[x]) == 2]
+                                                   if np.argmax(self.gesture_to_probability[x]) == 2]
 
 	def init_leds_gestures(self):
 		self.led_gesture = {
@@ -330,7 +332,6 @@ class StoryTeller:
 		self.sub = self.memory_service.subscriber(
 		        "ALTextToSpeech/CurrentBookMark")
 		self.sub.signal.connect(self.bookmark_handler)
-
 
 	def init_sentiment_analysis_client(self):
 		self.nlp = StanfordCoreNLP('http://localhost', port=9000, timeout=30000)
@@ -481,17 +482,15 @@ class StoryTeller:
 		self.anim.run(gesture)
 		#self.posture.goToPosture("Stand", 1.0)
 		#self.motion.angleInterpolation(["HeadYaw", "HeadPitch"], [0.0, 0.0], [1.0, 1.0], True)
-		
+
 		quality = self.quality_function(self.sentences[index], gesture)
 		self.quality_sum += quality
-
 
 	def eye_change_handler(self, data):
 		emotion, gesture = data
 		print(emotion)
 		print(gesture)
 		#self.change_eyes(emotion, gesture)
-
 
 	def change_eyes(self, emotion, gesture):
 		print(gesture, " - ", self.led_gestures[gesture])
