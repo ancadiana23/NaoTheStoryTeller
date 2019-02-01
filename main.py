@@ -431,6 +431,10 @@ class StoryTeller:
 		gesture_index = randint(0, len(self.gesture_to_probability) - 1)
 		gesture = self.gesture_to_probability.keys()[gesture_index]
 		return gesture
+	def choose_led(self, _):
+		led_index = randint(0, len(self.led_gesture) - 1)
+		led = self.led_gesture.keys()[led_index]
+		return led
 
 	def choose_policy_gesture(self, sentence_index):
 		#TODO: move to utils

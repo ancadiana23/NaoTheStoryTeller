@@ -93,8 +93,8 @@ class QLearner:
 			num_next_states = len(self.transition_table[current_sentence])
 			counter = Counter(self.transition_table[current_sentence])
 			self.transition_table[current_sentence] = \
-                                                                {sentence: occurences/num_next_states \
-                                                                for (sentence, occurences) in counter.most_common()}
+                                                                                  {sentence: occurences/num_next_states \
+                                                                                  for (sentence, occurences) in counter.most_common()}
 
 	def choose_action(self, state):
 		if random.uniform(0.0, 1.0) < self.epsilon:
@@ -107,20 +107,20 @@ class QLearner:
 		return random.choice(self.story_teller.led_gesture.keys())
 
 	def best_action_leds(self, state):
-		if state not in self.state_action_table or \
-                                                               not self.state_action_table[state]:
+		if state not in self.state_action_table or not self.state_action_table[
+		        state]:
 			return random.choice(self.story_teller.led_gesture.keys())
-		led_action = max(self.state_action_table[state].items(), \
-                                                                       key=lambda (x, y): y)
+		led_action = max(
+		        self.state_action_table[state].items(), key=lambda (x, y): y)
 		led_action = led_action[0]
 		return led_action
 
 	def best_action(self, state):
-		if state not in self.state_action_table or \
-                                                               not self.state_action_table[state]:
+		if state not in self.state_action_table or not self.state_action_table[
+		        state]:
 			return random.choice(self.story_teller.gesture_list)
-		gesture = max(self.state_action_table[state].items(), \
-                                                                       key=lambda (x, y): y)
+		gesture = max(
+		        self.state_action_table[state].items(), key=lambda (x, y): y)
 		gesture = gesture[0]
 		return gesture
 
@@ -208,10 +208,10 @@ class QLearner:
 					expressivity_reward = (gesture_distribution[0] +
 					                       gesture_distribution[4]) * 2.0
 					self.state_action_table[state][gesture] = \
-                                                                             current_utility + \
-                                                                             self.learning_rate * \
-                                                                              (reward + self.decay * next_utility +  \
-                                                                               repeat_gesture_penalty + expressivity_reward - current_utility)
+                                                                                                           current_utility + \
+                                                                                                           self.learning_rate * \
+                                                                                                            (reward + self.decay * next_utility +  \
+                                                                                                             repeat_gesture_penalty + expressivity_reward - current_utility)
 
 		print("Done training")
 		print("----> Best quality: {:4f}".format(best_qual))
@@ -222,6 +222,7 @@ class QLearner:
 		start = time.time()
 		test_qualities = []
 		train_qualities = []
+		baseline_qualities = []
 
 		best_qual = 0.0
 		best_state_action_table = {}
@@ -239,11 +240,13 @@ class QLearner:
 			for story in self.training_set:
 				test_quality = self.test_leds("test")
 				train_quality = self.test_leds("train")
+				baseline_quality = self.test_random_leds()
 
 				print(epoch, " - ", test_quality)
 
 				test_qualities.append(test_quality)
 				train_qualities.append(train_quality)
+				baseline_qualities.append(baseline_quality)
 
 				if test_quality > best_qual:
 					best_qual = test_quality
@@ -267,17 +270,17 @@ class QLearner:
 					        led_action, 0.0)
 
 					self.state_action_table[state][led_action] = \
-                                                                                            current_utility + \
-                                                                                            self.learning_rate * \
-                                                                                             (reward + self.decay * next_utility +  \
-                                                                                             current_utility)
+                                                                                                                          current_utility + \
+                                                                                                                          self.learning_rate * \
+                                                                                                                           (reward + self.decay * next_utility +  \
+                                                                                                                           current_utility)
 
 		print("Done training")
 		print("----> Best quality: {:4f}".format(best_qual))
 		print("Arousal max:{}, arousal min:{}, arousal average:{}".format(
 		        np.max(self.arousal_list), np.min(self.arousal_list),
 		        np.mean(self.arousal_list)))
-		return train_qualities, test_qualities, best_state_action_table
+		return train_qualities, test_qualities, baseline_qualities, best_state_action_table
 
 	def test(self, select_set):
 		# error = 0.0
@@ -330,6 +333,18 @@ class QLearner:
 				                       gesture)
 		return quality / num_sen
 
+	def test_random_leds(self):
+		quality = 0.0
+		num_sen = 0
+		for story in self.dataset:
+			num_sen += len(story["story"])
+			for sentence in story["story"]:
+				# call random gesture from the story teller.
+				# the number of the sentence will not be used so it does not matter.
+				led = self.story_teller.choose_led(0)
+				quality += self.led_reward(self.sentence_to_sentiment[sentence],
+				                       led)
+		return quality / num_sen
 	def plot_data(self,
 	              train_data,
 	              test_data,
@@ -360,7 +375,7 @@ class QLearner:
 		for indx in range(1):
 			print("-" * 10)
 			self.state_action_table = {}
-			train_qualities, test_qualities, best_policy = self.train_leds()
+			train_qualities, test_qualities, baseline_qualities, best_policy = self.train_leds()
 			title = "best_policy_run_leds{}.json".format(indx)
 			with open(title, "w") as file:
 				best_policy = {
@@ -368,7 +383,7 @@ class QLearner:
 				        for state in best_policy
 				}
 				json.dump(best_policy, file)
-			self.plot_data(train_qualities, test_qualities)
+			self.plot_data(train_qualities, test_qualities,baseline_qualities)
 
 	def main_gesture(self):
 		total_q_train = []
@@ -388,14 +403,13 @@ class QLearner:
 			self.plot_data(train_qualities, test_qualities, baseline_qualities)
 
 	def main(self):
-		self.main_gesture()
+		#self.main_gesture()
 		self.main_leds()
 
 
 def best_action(state, state_action_table):
 	# move to utils
-	gesture = max(state_action_table[state].items(), \
-                                                 key=lambda (x, y): y)
+	gesture = max(state_action_table[state].items(), key=lambda (x, y): y)
 	gesture = gesture[0]
 	return gesture
 
